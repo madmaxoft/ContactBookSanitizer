@@ -32,8 +32,8 @@ void ContactBookModel::setContactBook(ContactBookPtr a_ContactBook)
 			appendRow(item);
 			for (const auto & element: contact->getElements())
 			{
-				auto elementName = new QStandardItem(QString::fromStdString(element.first));
-				auto elementValue = new QStandardItem(QString::fromStdString(element.second));
+				auto elementName = new QStandardItem(element.getTypeDesc());
+				auto elementValue = new QStandardItem(element.m_Value);
 				QList<QStandardItem *> element;
 				element << elementName << elementValue;
 				item->appendRow(element);
