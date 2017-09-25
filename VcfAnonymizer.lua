@@ -12,7 +12,7 @@
 local function extractName(a_Line)
 	local len = #a_Line
 	local i = 1
-	while (i < len) do
+	while (i <= len) do
 		local ch = a_Line:sub(i, i)
 		if (ch == '"') then
 			-- Skip until the next dquote:
