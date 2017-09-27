@@ -21,6 +21,7 @@ void ContactBookModel::setContactBook(ContactBookPtr a_ContactBook)
 {
 	// Clear previous contents:
 	clear();
+	setColumnCount(2);
 
 	// Insert the current contents:
 	m_ContactBook = a_ContactBook;
