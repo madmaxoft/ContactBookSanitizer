@@ -18,7 +18,8 @@ std::unique_ptr<Session> makeExampleSession()
 	ContactBookPtr book(new ContactBook(QString::fromUtf8("Example contact book")));
 	session->addContactBook(book);
 	ContactPtr contact(new Contact(QString::fromUtf8("Example contact")));
-	contact->addElement(Contact::Element::etkPhoneNumber, Contact::Element::etuHome, "112");
+	contact->addNumber({Contact::Number::cnuWork, QString::fromUtf8("112")});
+	contact->addEmail({Contact::Email::ceuWork, QString::fromUtf8("always.busy@emergency.com")});
 	book->addContact(contact);
 	return session;
 }
