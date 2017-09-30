@@ -24,19 +24,21 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 
-SOURCES += main.cpp\
-        MainWindow.cpp \
-    Session.cpp \
-    Contact.cpp \
-    ContactBook.cpp \
-    SessionModel.cpp \
-    ContactBookModel.cpp
+SOURCES += \
+	main.cpp\
+	MainWindow.cpp \
+	Session.cpp \
+	Contact.cpp \
+	ContactBook.cpp \
+	SessionModel.cpp \
+	ContactBookModel.cpp
 
-HEADERS  += MainWindow.h \
-    Session.h \
-    Contact.h \
-    ContactBook.h \
-    SessionModel.h \
-    ContactBookModel.h
+HEADERS  += \
+	MainWindow.h \
+	Session.h \
+	Contact.h \
+	ContactBook.h \
+	SessionModel.h \
+	ContactBookModel.h
 
 FORMS    += MainWindow.ui
