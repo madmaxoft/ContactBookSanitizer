@@ -5,6 +5,8 @@
 
 
 
+#include <memory>
+
 #include <QStandardItemModel>
 
 
@@ -14,6 +16,8 @@
 // fwd:
 class Session;
 class ContactBook;
+class Device;
+using ContactBookPtr = std::shared_ptr<ContactBook>;
 
 
 
@@ -23,6 +27,7 @@ class ContactBook;
 class SessionModel:
 	public QStandardItemModel
 {
+	Q_OBJECT
 	typedef QStandardItemModel Super;
 
 public:
@@ -35,15 +40,28 @@ public:
 
 	/** Returns the contact book that is represented by the specified model index.
 	Returns nullptr if the model index doesn't represent a ContactBook. */
-	const ContactBook * getContactBook(const QModelIndex & a_Index) const;
+	ContactBookPtr getContactBook(const QModelIndex & a_Index) const;
 
 
 protected:
 
+
 	/** The session to be modelled by this instance. */
 	Session * m_Session;
 
+	/** The root item under which Online devices are added. */
+	QStandardItem * m_RootOnline;
 
+	/** The root item under which the Offline devices are added. */
+	QStandardItem * m_RootOffline;
+
+	/** The root item undec which backups are added. */
+	QStandardItem * m_RootBackups;
+
+
+	/** Returns the root item under which the device should be added.
+	Returns one of m_RootOnline, m_RootOffline or m_RootBackups. */
+	QStandardItem * getRootForDevice(const Device & a_Device);
 };
 
 

@@ -14,8 +14,7 @@
 
 
 // fwd:
-class ContactBook;
-typedef std::shared_ptr<ContactBook> ContactBookPtr;
+class Device;
 
 
 
@@ -33,18 +32,23 @@ public:
 	/** Creates a new instance, with no ContactBooks contained within. */
 	explicit Session();
 
-	/** Adds the specified contact book to the session. */
-	void addContactBook(ContactBookPtr a_ContactBook);
+	/** Adds the specified device to the session. */
+	void addDevice(std::unique_ptr<Device> a_Device);
 
-	/** Returns all the contact books currently stored within. */
-	const std::vector<ContactBookPtr> & getContactBooks() const { return m_ContactBooks; }
+	/** Returns all the sources currently stored within. */
+	const std::vector<std::unique_ptr<Device>> & getDevices() const { return m_Devices; }
 
-	/** Returns a writable reference to the specified read-only ContactBook.
-	Returns nullptr if the ContactBook is not part of this session. */
-	ContactBookPtr getContactBook(const ContactBook * a_ContactBook);
+	/** Removes the specified device (and its corresponding contact books) from the session. */
+	void delDevice(const Device * a_Device);
+
+	/** Starts all devices in the session. */
+	void startDevices();
+
+	/** Stops all devices in the session. */
+	void stopDevices();
 
 protected:
-	std::vector<ContactBookPtr> m_ContactBooks;
+	std::vector<std::unique_ptr<Device>> m_Devices;
 
 signals:
 

@@ -1,11 +1,15 @@
-#include "MainWindow.h"
 #include <QApplication>
 #include <QFile>
-#include <QtXml/QDomDocument>
-
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QtDebug>
+#include "MainWindow.h"
 #include "Session.h"
 #include "ContactBook.h"
 #include "Contact.h"
+#include "Device.h"
+#include "ExampleDevice.h"
 
 
 
@@ -15,12 +19,7 @@
 std::unique_ptr<Session> makeExampleSession()
 {
 	std::unique_ptr<Session> session(new Session);
-	ContactBookPtr book(new ContactBook(QString::fromUtf8("Example contact book")));
-	session->addContactBook(book);
-	ContactPtr contact(new Contact(QString::fromUtf8("Example contact")));
-	contact->addNumber({Contact::Number::cnuWork, QString::fromUtf8("112")});
-	contact->addEmail({Contact::Email::ceuWork, QString::fromUtf8("always.busy@emergency.com")});
-	book->addContact(contact);
+	session->addDevice(std::unique_ptr<Device>(new ExampleDevice));
 	return session;
 }
 
@@ -32,20 +31,37 @@ std::unique_ptr<Session> makeExampleSession()
 Returns the loaded session, or nullptr if the loading failed. */
 std::unique_ptr<Session> loadSessionFromFile(const QString & a_FileName)
 {
+	// Read the JSON from the file:
 	QFile file(a_FileName);
 	if (!file.open(QFile::ReadOnly | QFile::Text))
 	{
 		return nullptr;
 	}
-	QDomDocument doc;
-	if (!doc.setContent(&file, false))
+	QJsonParseError err;
+	auto doc = QJsonDocument::fromJson(file.readAll(), &err);
+	if (err.error == QJsonParseError::NoError)
+	{
+		qWarning() << "Cannot parse file " << a_FileName << ": " << err.errorString();
+		return nullptr;
+	}
+
+	// Create devices based on the JSON:
+	std::unique_ptr<Session> session(new Session);
+	const auto & devices = doc.object()["devices"];
+	for (const auto & device: devices.toArray())
+	{
+		auto dev = Device::createFromConfig(device.toObject());
+		if (dev != nullptr)
+		{
+			session->addDevice(std::move(dev));
+		}
+	}
+	if (session->getDevices().empty())
 	{
 		return nullptr;
 	}
 
-	// TODO: parse the document
-
-	return makeExampleSession();
+	return session;
 }
 
 
@@ -71,10 +87,9 @@ std::unique_ptr<Session> loadSession()
 		return session;
 	}
 
-	// No data could be read, create a new session file
-	// First try writing it to the current folder; if it fails, we're installed, if it succeeds, we're portable
+	// No data could be read, create a new example session file
+	// TODO: First try writing it to the current folder; if it fails, we're installed, if it succeeds, we're portable
 	session = makeExampleSession();
-	// TODO
 	return session;
 }
 

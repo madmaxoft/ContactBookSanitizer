@@ -1,4 +1,5 @@
 #include "Session.h"
+#include "Device.h"
 
 
 
@@ -14,25 +15,33 @@ Session::Session():
 
 
 
-void Session::addContactBook(ContactBookPtr a_ContactBook)
+void Session::addDevice(std::unique_ptr<Device> a_Device)
 {
-	m_ContactBooks.push_back(a_ContactBook);
+	m_Devices.push_back(std::move(a_Device));
 }
 
 
 
 
 
-ContactBookPtr Session::getContactBook(const ContactBook * a_ContactBook)
+void Session::startDevices()
 {
-	for (auto & cb: m_ContactBooks)
+	for (auto & dev: m_Devices)
 	{
-		if (cb.get() == a_ContactBook)
-		{
-			return cb;
-		}
+		dev->start();
 	}
-	return nullptr;
+}
+
+
+
+
+
+void Session::stopDevices()
+{
+	for (auto & dev: m_Devices)
+	{
+		dev->stop();
+	}
 }
 
 

@@ -31,7 +31,9 @@ SOURCES += \
 	Contact.cpp \
 	ContactBook.cpp \
 	SessionModel.cpp \
-	ContactBookModel.cpp
+	ContactBookModel.cpp \
+	Device.cpp \
+	ExampleDevice.cpp
 
 HEADERS  += \
 	MainWindow.h \
@@ -39,6 +41,8 @@ HEADERS  += \
 	Contact.h \
 	ContactBook.h \
 	SessionModel.h \
-	ContactBookModel.h
+	ContactBookModel.h \
+	Device.h \
+	ExampleDevice.h
 
 FORMS    += MainWindow.ui

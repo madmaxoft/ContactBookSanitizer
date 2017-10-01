@@ -29,9 +29,23 @@ MainWindow::MainWindow(std::unique_ptr<Session> && a_Session):
 
 	connectSignals();
 
+	// Start the devices:
+	m_Session->startDevices();
+
 	// Set up the session display:
 	m_SessionModel.reset(new SessionModel(m_Session.get()));
 	m_UI->tvSession->setModel(m_SessionModel.get());
+	auto onlineRoot = m_SessionModel->index(0, 0);
+	m_UI->tvSession->expand(onlineRoot);
+	for (int i = 0;; ++i)
+	{
+		auto mi = m_SessionModel->index(i, 0, onlineRoot);
+		if (!mi.isValid())
+		{
+			break;
+		}
+		m_UI->tvSession->expand(mi);
+	}
 
 	// Set up the ContactBook display:
 	m_ContactBookModel.reset(new ContactBookModel(nullptr));
@@ -44,8 +58,7 @@ MainWindow::MainWindow(std::unique_ptr<Session> && a_Session):
 
 MainWindow::~MainWindow()
 {
-	// No explicit code needed
-	// Still, this needs to be present in the CPP file, so that unique_ptr<UI>'s destructor is generated here.
+	m_Session->stopDevices();
 }
 
 
@@ -64,8 +77,8 @@ void MainWindow::connectSignals()
 
 void MainWindow::sessionItemActivated(const QModelIndex & a_Index)
 {
-	auto cbook = m_SessionModel->getContactBook(a_Index);
-	m_ContactBookModel->setContactBook(m_Session->getContactBook(cbook));
+	m_ContactBookModel->setContactBook(m_SessionModel->getContactBook(a_Index));
+	m_UI->tvContactBook->expandAll();
 }
 
 
