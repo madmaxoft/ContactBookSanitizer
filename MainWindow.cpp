@@ -3,6 +3,7 @@
 #include "Session.h"
 #include "SessionModel.h"
 #include "ContactBookModel.h"
+#include "Device.h"
 
 
 
@@ -35,6 +36,8 @@ MainWindow::MainWindow(std::unique_ptr<Session> && a_Session):
 	// Set up the session display:
 	m_SessionModel.reset(new SessionModel(m_Session.get()));
 	m_UI->tvSession->setModel(m_SessionModel.get());
+
+	// Expand the online devices:
 	auto onlineRoot = m_SessionModel->index(0, 0);
 	m_UI->tvSession->expand(onlineRoot);
 	for (int i = 0;; ++i)
