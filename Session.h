@@ -9,12 +9,7 @@
 
 #include <QObject>
 
-
-
-
-
-// fwd:
-class Device;
+#include "Device.h"
 
 
 
