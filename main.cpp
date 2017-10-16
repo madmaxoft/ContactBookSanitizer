@@ -7,9 +7,9 @@
 #include "MainWindow.h"
 #include "Session.h"
 #include "ContactBook.h"
-#include "Contact.h"
 #include "Device.h"
 #include "ExampleDevice.h"
+#include "DeviceVcfFile.h"
 
 
 
@@ -20,6 +20,13 @@ std::unique_ptr<Session> makeExampleSession()
 {
 	std::unique_ptr<Session> session(new Session);
 	session->addDevice(std::unique_ptr<Device>(new ExampleDevice));
+
+	// Test: add a device based on a VCF file
+	QJsonObject cfg;
+	cfg["type"] = QString::fromUtf8("VcfFile");
+	cfg["fileName"] = QString::fromUtf8("Contacts.vcf");
+	session->addDevice(Device::createFromConfig(cfg));
+
 	return session;
 }
 

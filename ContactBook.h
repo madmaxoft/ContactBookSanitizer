@@ -26,7 +26,8 @@ public:
 	/** Creates a new instance, with the specified display name. */
 	explicit ContactBook(const QString & a_DisplayName);
 
-	const QString & getDisplayName() const { return m_DisplayName; }
+	const QString & displayName() const { return m_DisplayName; }
+	void setDisplayName(const QString & a_NewDisplayName);
 
 	/** Adds the specified contact to the container. */
 	void addContact(ContactPtr a_Contact);
@@ -43,7 +44,10 @@ protected:
 	/** All the contained contacts. */
 	std::vector<ContactPtr> m_Contacts;
 
+
 signals:
+
+	void displayNameChanged(const QString & a_NewDisplayName);
 
 public slots:
 };

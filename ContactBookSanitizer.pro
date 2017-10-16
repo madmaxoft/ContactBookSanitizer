@@ -28,21 +28,28 @@ SOURCES += \
 	main.cpp\
 	MainWindow.cpp \
 	Session.cpp \
-	Contact.cpp \
 	ContactBook.cpp \
 	SessionModel.cpp \
 	ContactBookModel.cpp \
 	Device.cpp \
-	ExampleDevice.cpp
+	ExampleDevice.cpp \
+	DeviceVcfFile.cpp \
+	VCardParser.cpp \
+	Contact.cpp \
+	DisplayContact.cpp
 
 HEADERS  += \
 	MainWindow.h \
 	Session.h \
-	Contact.h \
 	ContactBook.h \
 	SessionModel.h \
 	ContactBookModel.h \
 	Device.h \
-	ExampleDevice.h
+	ExampleDevice.h \
+	DeviceVcfFile.h \
+	VCardParser.h \
+	Exceptions.h \
+	Contact.h \
+	DisplayContact.h
 
 FORMS    += MainWindow.ui

@@ -4,14 +4,7 @@
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-// Contact:
-
-Contact::Contact(const QString & a_DisplayName):
-	m_DisplayName(a_DisplayName)
+void Contact::addSentence(const Contact::Sentence & a_Sentence)
 {
+	m_Sentences.push_back(a_Sentence);
 }
-
-
-
-

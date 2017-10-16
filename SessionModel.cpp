@@ -56,12 +56,12 @@ void SessionModel::setSession(Session * a_Session)
 		{
 			continue;
 		}
-		auto item = new QStandardItem(dev->getDisplayName());
+		auto item = new QStandardItem(dev->displayName());
 		item->setData(QVariant(reinterpret_cast<qulonglong>(dev.get())), roleDevice);
 		root->appendRow(item);
-		for (const auto & cbook: dev->getContactBooks())
+		for (const auto & cbook: dev->contactBooks())
 		{
-			auto itemCB = new QStandardItem(cbook->getDisplayName());
+			auto itemCB = new QStandardItem(cbook->displayName());
 			itemCB->setData(QVariant(reinterpret_cast<qulonglong>(dev.get())),   roleDevice);
 			itemCB->setData(QVariant(reinterpret_cast<qulonglong>(cbook.get())), roleContactBook);
 			item->appendRow(itemCB);

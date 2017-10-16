@@ -29,11 +29,11 @@ protected:
 
 
 	// Device overrides:
-	virtual QString getDisplayName() const override;
+	virtual QString displayName() const override;
 	virtual void start(void) override;
 	virtual void stop(void) override;
 	virtual bool isOnline() const override;
-	virtual const std::vector<ContactBookPtr> & getContactBooks() override;
+	virtual const std::vector<ContactBookPtr> contactBooks() override;
 	virtual bool load(const QJsonObject & a_Config) override;
 	virtual QJsonObject save() const override;
 };

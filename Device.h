@@ -41,7 +41,7 @@ public:
 	static std::unique_ptr<Device> createFromConfig(const QJsonObject & a_Config);
 
 	/** Returns the display name that should be used for this device. */
-	virtual QString getDisplayName() const = 0;
+	virtual QString displayName() const = 0;
 
 	/** Starts the device.
 	The device can start its background threads here, and report its Online state only after this call. */
@@ -59,7 +59,7 @@ public:
 	virtual bool isBackup() const { return false; }
 
 	/** Returns all the contact books currently available in the device. */
-	virtual const std::vector<ContactBookPtr> & getContactBooks() = 0;
+	virtual const std::vector<ContactBookPtr> contactBooks() = 0;
 
 	/** Converts the const naked pointer to ContactBook to the mutable shared_ptr version, if available.
 	Returns nullptr if the contact book is not known.

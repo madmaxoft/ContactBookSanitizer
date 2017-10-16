@@ -1,5 +1,9 @@
 #include "ExampleDevice.h"
+
+#include <QBuffer>
+
 #include "ContactBook.h"
+#include "VCardParser.h"
 
 
 
@@ -9,17 +13,24 @@ ExampleDevice::ExampleDevice()
 {
 	// Fill in the example contacts:
 	m_ExampleContactBooks.emplace_back(new ContactBook(tr("Example contact book")));
-	ContactPtr contact(new Contact(tr("Example contact")));
-	contact->addNumber({Contact::Number::cnuWork, tr("112")});
-	contact->addEmail({Contact::Email::ceuWork, tr("always.busy@emergency.com")});
-	m_ExampleContactBooks[0]->addContact(contact);
+	QByteArray vcard(
+		"begin:vcard\r\n"
+		"version:4\r\n"
+		"fn:Example contact\r\n"
+		"tel;type=work:112\r\n"
+		"email;type=work:always.busy@emergency.com\r\n"
+		"end:vcard"
+	);
+	QBuffer buf(&vcard);
+	buf.open(QIODevice::ReadOnly | QIODevice::Text);
+	VCardParser::parse(buf, m_ExampleContactBooks[0]);
 }
 
 
 
 
 
-QString ExampleDevice::getDisplayName() const
+QString ExampleDevice::displayName() const
 {
 	return tr("Example device");
 }
@@ -56,7 +67,7 @@ bool ExampleDevice::isOnline() const
 
 
 
-const std::vector<ContactBookPtr> & ExampleDevice::getContactBooks()
+const std::vector<ContactBookPtr> ExampleDevice::contactBooks()
 {
 	return m_ExampleContactBooks;
 }

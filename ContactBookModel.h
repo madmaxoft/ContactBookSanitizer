@@ -14,6 +14,14 @@
 
 
 
+// fwd:
+class DisplayContact;
+using DisplayContactPtr = std::shared_ptr<DisplayContact>;
+
+
+
+
+
 /** Provides a model for displaying a contact book.
 Each contact is a top level item in a tree, and has sub-items for each element in their vcard. */
 class ContactBookModel:
@@ -37,15 +45,12 @@ protected:
 	/** The contact book being modelled. */
 	ContactBookPtr m_ContactBook;
 
+	/** Contacts from m_ContactBook, parsed for UI display. */
+	std::vector<DisplayContactPtr> m_DisplayContacts;
+
 
 	/** Updates the children of the specified item representing a contact, to match the current contact data. */
 	void updateContactItem(QStandardItem * a_ContactItem);
-
-	/** Returns the label to use for the specified Number usage. */
-	static QString getNumberUsageLabel(Contact::Number::Usage a_NumberUsage, const QString & a_CustomUsage);
-
-	/** Returns the label to use for the specified Email usage. */
-	static QString getEmailUsageLabel(Contact::Email::Usage a_EmailUsage, const QString & a_CustomUsage);
 };
 
 
