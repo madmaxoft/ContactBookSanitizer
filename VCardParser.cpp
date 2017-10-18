@@ -16,9 +16,9 @@ class VCardParserImpl
 public:
 	/** Creates a new parser instance and binds it to the specified data source and destination contact book. */
 	VCardParserImpl(QIODevice & a_Source, ContactBookPtr a_Dest):
+		m_State(psIdle),
 		m_Source(a_Source),
 		m_Dest(a_Dest),
-		m_State(psIdle),
 		m_CurrentLineNum(0)
 	{
 	}
@@ -116,7 +116,7 @@ protected:
 			qWarning() << QString::fromUtf8("Cannot parse VCARD, line %1: %2. The line contents: \"%3\"")
 				.arg(m_CurrentLineNum)
 				.arg(QString::fromStdString(exc.m_Message))
-				.arg(QString::fromStdString(a_Line.toStdString()));
+				.arg(QString::fromUtf8(a_Line));
 			throw;
 		}
 	}
