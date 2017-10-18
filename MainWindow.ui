@@ -42,11 +42,27 @@
        <number>8</number>
       </property>
       <widget class="QTreeView" name="tvSession">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>1</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="headerHidden">
         <bool>true</bool>
        </property>
       </widget>
-      <widget class="QTreeView" name="tvContactBook"/>
+      <widget class="QTreeView" name="tvContactBook">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>4</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="verticalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOn</enum>
+       </property>
+      </widget>
      </widget>
     </item>
    </layout>

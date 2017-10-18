@@ -1,0 +1,6 @@
+<RCC>
+	<qresource>
+        <file>res/Email.png</file>
+        <file>res/Phone.png</file>
+    </qresource>
+</RCC>

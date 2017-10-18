@@ -53,3 +53,6 @@ HEADERS  += \
 	DisplayContact.h
 
 FORMS    += MainWindow.ui
+
+RESOURCES += \
+	res.qrc

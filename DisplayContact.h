@@ -9,7 +9,7 @@
 #include <vector>
 
 #include <QString>
-#include <QPixmap>
+#include <QIcon>
 
 #include "Contact.h"
 
@@ -34,11 +34,11 @@ public:
 	/** Representation of a single logical item in the contact. */
 	struct Item
 	{
-		const QPixmap * m_Icon;  // May be nullptr
+		const QIcon * m_Icon;  // May be nullptr
 		QString m_Label;
 		std::vector<QString> m_Values;
 
-		Item(const QPixmap * a_Icon, const QString & a_Label, const std::vector<QString> & a_Values):
+		Item(const QIcon * a_Icon, const QString & a_Label, const std::vector<QString> & a_Values):
 			m_Icon(a_Icon),
 			m_Label(a_Label),
 			m_Values(a_Values)
@@ -91,7 +91,7 @@ protected:
 	void addEmailItem(const Contact::Sentence & a_EmailSentence);
 
 	/** Adds a new item with the specified contents. */
-	void addItem(const QPixmap * a_Icon, const QString & a_Label, const std::vector<QString> & a_Values);
+	void addItem(const QIcon * a_Icon, const QString & a_Label, const std::vector<QString> & a_Values);
 
 	/** Composes a name out of its (VCard) components. */
 	QString composeName(
@@ -101,6 +101,10 @@ protected:
 		const std::vector<QByteArray> & a_Prefixes,
 		const std::vector<QByteArray> & a_Suffixes
 	);
+
+	// Getters for the static shared icons
+	static QIcon * icoTel();
+	static QIcon * icoEmail();
 };
 
 using DisplayContactPtr = std::shared_ptr<DisplayContact>;

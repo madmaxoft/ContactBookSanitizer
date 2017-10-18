@@ -68,7 +68,8 @@ void DisplayContact::addNameItem(const Contact::Sentence & a_NameSentence)
 
 void DisplayContact::addTelItem(const Contact::Sentence & a_TelSentence)
 {
-	// TODO
+	// TODO: Decide if the number is home, work, fax etc.
+	addItem(icoTel(), tr("Home"), {a_TelSentence.m_Value});
 }
 
 
@@ -84,7 +85,7 @@ void DisplayContact::addEmailItem(const Contact::Sentence & a_EmailSentence)
 
 
 
-void DisplayContact::addItem(const QPixmap * a_Icon, const QString & a_Label, const std::vector<QString> & a_Values)
+void DisplayContact::addItem(const QIcon * a_Icon, const QString & a_Label, const std::vector<QString> & a_Values)
 {
 	m_Items.emplace_back(new Item(a_Icon, a_Label, a_Values));
 }
@@ -148,6 +149,26 @@ QString DisplayContact::composeName(
 		res.append(QString::fromUtf8(s));
 	}
 	return res;
+}
+
+
+
+
+
+QIcon * DisplayContact::icoTel()
+{
+	static QIcon ico{":/res/Phone.png"};
+	return &ico;
+}
+
+
+
+
+
+QIcon * DisplayContact::icoEmail()
+{
+	static QIcon ico(":/res/Email.png");
+	return &ico;
 }
 
 
