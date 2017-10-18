@@ -215,15 +215,16 @@ protected:
 					if (ch == ';')
 					{
 						// Value-less parameter with another parameter following ("TEL;CELL;OTHER:...")
-						res.m_Params.emplace_back(currentParamName, QByteArray());
+						res.m_Params.emplace_back(a_Line.mid(last, i - last), QByteArray());
 						last = i + 1;
 						currentParamValue.clear();
+						currentParamName.clear();
 						continue;
 					}
 					if (ch == ':')
 					{
 						// Value-less parameter ending the params ("TEL;CELL:...")
-						res.m_Params.emplace_back(currentParamName, QByteArray());
+						res.m_Params.emplace_back(a_Line.mid(last, i - last), QByteArray());
 						last = i + 1;
 						last = i + 1;
 						res.m_Value = a_Line.mid(i + 1, len - i - 1);
