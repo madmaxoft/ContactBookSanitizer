@@ -242,6 +242,8 @@ protected:
 							throw EParseError(__FILE__, __LINE__, "Param value double-quoting is wrong");
 						}
 						last = i + 1;
+						sentenceState = ssParamValueDQuote;
+						continue;
 					}
 					if (ch == ',')
 					{
@@ -255,6 +257,14 @@ protected:
 						last = i + 1;
 						res.m_Value = a_Line.mid(i + 1, len - i - 1);
 						return res;
+					}
+					if (ch == ';')
+					{
+						res.m_Params.emplace_back(currentParamName, a_Line.mid(last, i - last));
+						last = i + 1;
+						sentenceState = ssParamName;
+						currentParamName.clear();
+						continue;
 					}
 					break;
 				}  // case ssParamValue
@@ -282,20 +292,19 @@ protected:
 
 				case ssParamValueEnd:
 				{
-					if (ch == ',')
-					{
-						last = i + 1;
-						currentParamValue.clear();
-						sentenceState = ssParamValue;
-					}
 					if (ch == ':')
 					{
-						res.m_Params.emplace_back(currentParamName, a_Line.mid(last, i - last));
 						last = i + 1;
 						res.m_Value = a_Line.mid(i + 1, len - i - 1);
 						return res;
 					}
-					throw EParseError(__FILE__, __LINE__, "An extra character following a param value double-quote");
+					if (ch == ';')
+					{
+						last = i + 1;
+						sentenceState = ssParamName;
+						continue;
+					}
+					throw EParseError(__FILE__, __LINE__, "An invalid character following a param value double-quote");
 				}  // case ssParamValueEnd
 			}
 		}  // for i - a_Line[]
@@ -350,8 +359,9 @@ protected:
 
 
 
-	/** Parses the given single (unfolded) line in the psContact parser state. */
-	void processSentenceContact(const Contact::Sentence & a_Sentence)
+	/** Parses the given single (unfolded) line in the psContact parser state.
+	May modify the sentence / trash it. */
+	void processSentenceContact(Contact::Sentence & a_Sentence)
 	{
 		// If the sentence is "END:VCARD", terminate the current contact:
 		if (
@@ -370,8 +380,85 @@ protected:
 			return;
 		}
 
+		// Decode any encoding on the sentence's value:
+		std::vector<QByteArray> enc;
+		for (const auto & p: a_Sentence.m_Params)
+		{
+			if (p.m_Name == "encoding")
+			{
+				enc = p.m_Values;
+			}
+		}
+		decodeValueEncoding(a_Sentence, enc);
+
 		// Add the sentence to the current contact:
 		m_CurrentContact->addSentence(a_Sentence);
+	}
+
+
+
+
+
+	/** Decodes the sentence's value according to the specified encoding.
+	a_EncodingSpec is the encoding to be decoded, represented as a VCard property values. */
+	void decodeValueEncoding(Contact::Sentence & a_Sentence, const std::vector<QByteArray> & a_EncodingSpec)
+	{
+		for (const auto & enc: a_EncodingSpec)
+		{
+			auto lcEnc = enc.toLower();
+			if ((lcEnc == "b") || (lcEnc == "base64"))
+			{
+				a_Sentence.m_Value = QByteArray::fromBase64(a_Sentence.m_Value);
+				return;
+			}
+			if (lcEnc == "quoted-printable")
+			{
+				a_Sentence.m_Value = decodeQuotedPrintable(a_Sentence.m_Value);
+				return;
+			}
+		}
+	}
+
+
+
+
+
+	/** Returns the data after performing a quoted-printable decoding on it. */
+	static QByteArray decodeQuotedPrintable(const QByteArray & a_Src)
+	{
+		QByteArray res;
+		auto len = a_Src.length();
+		res.reserve(len / 3);
+		for (int i = 0; i < len; ++i)
+		{
+			auto ch = a_Src.at(i);
+			if (ch == '=')
+			{
+				if (i + 2 == len)
+				{
+					// There's only one char left in the input, cannot decode -> copy to output
+					res.append(a_Src.mid(i));
+					return res;
+				}
+				auto hex = a_Src.mid(i + 1, 2);
+				bool isOK;
+				auto decodedCh = hex.toInt(&isOK, 16);
+				if (isOK)
+				{
+					res.append(decodedCh);
+				}
+				else
+				{
+					res.append(a_Src.mid(i, 3));
+				}
+				i += 2;
+			}
+			else
+			{
+				res.append(ch);
+			}
+		}
+		return res;
 	}
 };
 
