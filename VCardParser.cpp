@@ -151,6 +151,7 @@ protected:
 		}
 		int last = 0;
 		QByteArray currentParamName, currentParamValue;
+		Contact::SentenceParam * currentParam = nullptr;  // The parameter currently being parsed (already added to the contact)
 		for (auto i = 0; i < len; ++i)
 		{
 			auto ch = a_Line.at(i);
@@ -207,6 +208,8 @@ protected:
 							throw EParseError(__FILE__, __LINE__, "A parameter with no name is not allowed");
 						}
 						currentParamName = a_Line.mid(last, i - last).toLower();
+						res.m_Params.emplace_back(currentParamName);
+						currentParam = &res.m_Params.back();
 						last = i + 1;
 						currentParamValue.clear();
 						sentenceState = ssParamValue;
@@ -215,7 +218,7 @@ protected:
 					if (ch == ';')
 					{
 						// Value-less parameter with another parameter following ("TEL;CELL;OTHER:...")
-						res.m_Params.emplace_back(a_Line.mid(last, i - last), QByteArray());
+						res.m_Params.emplace_back(a_Line.mid(last, i - last));
 						last = i + 1;
 						currentParamValue.clear();
 						currentParamName.clear();
@@ -224,7 +227,7 @@ protected:
 					if (ch == ':')
 					{
 						// Value-less parameter ending the params ("TEL;CELL:...")
-						res.m_Params.emplace_back(a_Line.mid(last, i - last), QByteArray());
+						res.m_Params.emplace_back(a_Line.mid(last, i - last));
 						last = i + 1;
 						last = i + 1;
 						res.m_Value = a_Line.mid(i + 1, len - i - 1);
@@ -243,24 +246,28 @@ protected:
 						}
 						last = i + 1;
 						sentenceState = ssParamValueDQuote;
+						currentParamValue.clear();
 						continue;
 					}
 					if (ch == ',')
 					{
-						res.m_Params.emplace_back(currentParamName, a_Line.mid(last, i - last));
+						assert(currentParam != nullptr);
+						currentParam->m_Values.push_back(a_Line.mid(last, i - last));
 						last = i + 1;
 						continue;
 					}
 					if (ch == ':')
 					{
-						res.m_Params.emplace_back(currentParamName, a_Line.mid(last, i - last));
+						assert(currentParam != nullptr);
+						currentParam->m_Values.push_back(a_Line.mid(last, i - last));
 						last = i + 1;
 						res.m_Value = a_Line.mid(i + 1, len - i - 1);
 						return res;
 					}
 					if (ch == ';')
 					{
-						res.m_Params.emplace_back(currentParamName, a_Line.mid(last, i - last));
+						assert(currentParam != nullptr);
+						currentParam->m_Values.push_back(a_Line.mid(last, i - last));
 						last = i + 1;
 						sentenceState = ssParamName;
 						currentParamName.clear();
@@ -273,14 +280,38 @@ protected:
 				{
 					if (ch == '"')
 					{
-						res.m_Params.emplace_back(currentParamName, std::move(currentParamValue));
+						currentParam->m_Values.push_back(currentParamValue);
+						currentParamValue.clear();
 						last = i + 1;
 						sentenceState = ssParamValueEnd;
 						continue;
 					}
 					if (ch == '\\')
 					{
-						// Skip the escape
+						i += 1;
+						if (i >= len)
+						{
+							throw EParseError(__FILE__, __LINE__, "Invalid parameter value escape at the end of sentence");
+						}
+						auto nextCh = a_Line.at(i);
+						switch (nextCh)
+						{
+							case ',': currentParamValue.append(','); break;
+							case ';': currentParamValue.append(';'); break;
+							case 'n': currentParamValue.append('\n'); break;
+							case '\\': currentParamValue.append('\\'); break;
+							default:
+							{
+								throw EParseError(__FILE__, __LINE__, "Invalid parameter value escape char");
+							}
+						}
+						continue;
+					}
+					if (ch == ',')
+					{
+						currentParam->m_Values.push_back(currentParamValue);
+						last = i + 1;
+						currentParamValue.clear();
 						continue;
 					}
 					else

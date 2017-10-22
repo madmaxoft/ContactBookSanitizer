@@ -25,6 +25,15 @@ public:
 		QByteArray m_Name;
 		std::vector<QByteArray> m_Values;
 
+		/** Creates a new instance that has no value attached to it.
+		This is used for v2.1 value-less parameters, such as in "TEL;WORK:..." */
+		SentenceParam(const QByteArray & a_Name):
+			m_Name(a_Name)
+		{
+		}
+
+		/** Creates a new instance with a single value attached to it.
+		This is used for regular v4.0 parameters, such as in "TEL;TYPE=WORK..." */
 		SentenceParam(const QByteArray & a_Name, QByteArray && a_Value):
 			m_Name(a_Name)
 		{
@@ -59,7 +68,7 @@ protected:
 	std::vector<Sentence> m_Sentences;
 };
 
-typedef std::shared_ptr<Contact> ContactPtr;
+using ContactPtr = std::shared_ptr<Contact> ;
 
 
 
