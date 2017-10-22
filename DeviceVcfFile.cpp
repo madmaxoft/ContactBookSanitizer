@@ -87,6 +87,7 @@ bool DeviceVcfFile::load(const QJsonObject & a_Config)
 	// Strip away the path:
 	QFileInfo fi(m_VcfFileName);
 	m_VcfFileNameBase = fi.fileName();
+	m_DisplayName = m_VcfFileNameBase;
 
 	return true;
 }
