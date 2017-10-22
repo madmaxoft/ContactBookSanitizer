@@ -102,6 +102,11 @@ protected:
 		const std::vector<QByteArray> & a_Suffixes
 	);
 
+	/** Returns true if the sentence params either contain "type=<type>" (v4) or "<type>" (v2.1).
+	Used to determine home vs work vs mobile vs ... type of sentence.
+	a_LcType is the lowercase of the type to check. */
+	static bool isType(const Contact::SentenceParams & a_SentenceParams, const QByteArray & a_LcType);
+
 	// Getters for the static shared icons
 	static QIcon * icoTel();
 	static QIcon * icoEmail();

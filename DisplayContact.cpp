@@ -68,8 +68,31 @@ void DisplayContact::addNameItem(const Contact::Sentence & a_NameSentence)
 
 void DisplayContact::addTelItem(const Contact::Sentence & a_TelSentence)
 {
-	// TODO: Decide if the number is home, work, fax etc.
-	addItem(icoTel(), tr("Home"), {a_TelSentence.m_Value});
+	// Decide the base type:
+	QString type(tr("Other", "Phone"));
+	if (isType(a_TelSentence.m_Params, "home"))
+	{
+		type = tr("Home", "Phone");
+	}
+	else if (isType(a_TelSentence.m_Params, "work"))
+	{
+		type = tr("Work", "Phone");
+	}
+	else if (
+		isType(a_TelSentence.m_Params, "mobile") ||
+		isType(a_TelSentence.m_Params, "cell")
+	)
+	{
+		type = tr("Mobile", "Phone");
+	}
+
+	// If it is a fax number, add that info to the label:
+	if (isType(a_TelSentence.m_Params, "fax"))
+	{
+		type = tr("%1 fax").arg(type);
+	}
+
+	addItem(icoTel(), type, {a_TelSentence.m_Value});
 }
 
 
@@ -78,7 +101,25 @@ void DisplayContact::addTelItem(const Contact::Sentence & a_TelSentence)
 
 void DisplayContact::addEmailItem(const Contact::Sentence & a_EmailSentence)
 {
-	// TODO
+	// Decide the base type:
+	QString type(tr("Other", "Email"));
+	if (isType(a_EmailSentence.m_Params, "home"))
+	{
+		type = tr("Home", "Email");
+	}
+	else if (isType(a_EmailSentence.m_Params, "work"))
+	{
+		type = tr("Work", "Email");
+	}
+	else if (
+		isType(a_EmailSentence.m_Params, "mobile") ||
+		isType(a_EmailSentence.m_Params, "cell")
+	)
+	{
+		type = tr("Mobile", "Email");
+	}
+
+	addItem(icoEmail(), type, {a_EmailSentence.m_Value});
 }
 
 
@@ -149,6 +190,33 @@ QString DisplayContact::composeName(
 		res.append(QString::fromUtf8(s));
 	}
 	return res;
+}
+
+
+
+
+
+bool DisplayContact::isType(const Contact::SentenceParams & a_SentenceParams, const QByteArray & a_LcType)
+{
+	for (const auto & p: a_SentenceParams)
+	{
+		if ((p.m_Values.empty() || p.m_Values[0].isEmpty()) && (p.m_Name.toLower() == a_LcType))
+		{
+			// The sentence has a simple value-less parameter ("TEL;HOME:...")
+			return true;
+		}
+		if (p.m_Name == "type")
+		{
+			for (const auto & v: p.m_Values)
+			{
+				if (v.toLower() == a_LcType)
+				{
+					return true;
+				}
+			}
+		}
+	}
+	return false;
 }
 
 
