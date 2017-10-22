@@ -32,8 +32,8 @@ public:
 	/** Adds the specified contact to the container. */
 	void addContact(ContactPtr a_Contact);
 
-	/** Returns a read-only reference to all the contained. */
-	const std::vector<ContactPtr> & getContacts() const { return m_Contacts; }
+	/** Returns a read-only reference to all the contained contacts. */
+	const std::vector<ContactPtr> & contacts() const { return m_Contacts; }
 
 
 protected:

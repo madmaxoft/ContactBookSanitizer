@@ -29,7 +29,7 @@ void ContactBookModel::setContactBook(ContactBookPtr a_ContactBook)
 	m_ContactBook = a_ContactBook;
 	if (a_ContactBook != nullptr)
 	{
-		for (const auto & contact: a_ContactBook->getContacts())
+		for (const auto & contact: a_ContactBook->contacts())
 		{
 			auto displayContact = DisplayContact::fromContact(*contact);
 			m_DisplayContacts.push_back(displayContact);
