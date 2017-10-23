@@ -19,3 +19,4 @@ before_script:
 
 script:
   - make
+  - cd tests && qmake && make && ./TestVCardParser
