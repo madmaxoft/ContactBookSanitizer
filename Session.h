@@ -42,10 +42,18 @@ public:
 	/** Stops all devices in the session. */
 	void stopDevices();
 
+
 protected:
 	std::vector<std::unique_ptr<Device>> m_Devices;
 
+
 signals:
+
+	/** Emitted after a device is added into the session. */
+	void addedDevice(Device * a_Device);
+
+	/** Emitted before a device is removed from the session. */
+	void removingDevice(Device * a_Device);
 
 public slots:
 };

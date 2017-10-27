@@ -62,6 +62,21 @@ protected:
 	/** Returns the root item under which the device should be added.
 	Returns one of m_RootOnline, m_RootOffline or m_RootBackups. */
 	QStandardItem * getRootForDevice(const Device & a_Device);
+
+
+protected slots:
+
+	/** Adds the item for the device. */
+	void addDevice(Device * a_Device);
+
+	/** Removes the item representing the device. */
+	void removeDevice(Device * a_Device);
+
+
+signals:
+
+	/** Emitted after an item corresponding to a new device is created. */
+	void deviceItemCreated(const QModelIndex & a_Index);
 };
 
 
