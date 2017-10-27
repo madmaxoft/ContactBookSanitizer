@@ -61,6 +61,13 @@ private slots:
 
 	/** Triggered when the selection in tvSession changes. */
 	void sessionItemActivated(const QModelIndex & a_Index);
+
+	/** Shows the "Add new device" dialog. */
+	void addNewDevice(void);
+
+	/** Expands the device item represented by the model.
+	Triggered by m_SessionModel after a new device is added. */
+	void expandDeviceItem(const QModelIndex & a_Index);
 };
 
 

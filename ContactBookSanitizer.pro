@@ -36,7 +36,8 @@ SOURCES += \
 	DeviceVcfFile.cpp \
 	VCardParser.cpp \
 	Contact.cpp \
-	DisplayContact.cpp
+	DisplayContact.cpp \
+	DlgAddDevice.cpp
 
 HEADERS  += \
 	MainWindow.h \
@@ -50,7 +51,8 @@ HEADERS  += \
 	VCardParser.h \
 	Exceptions.h \
 	Contact.h \
-	DisplayContact.h
+	DisplayContact.h \
+	DlgAddDevice.h
 
 FORMS    += MainWindow.ui
 
