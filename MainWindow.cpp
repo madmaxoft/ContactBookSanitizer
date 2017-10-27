@@ -4,6 +4,7 @@
 #include "SessionModel.h"
 #include "ContactBookModel.h"
 #include "Device.h"
+#include "DlgAddDevice.h"
 
 
 
@@ -34,7 +35,12 @@ MainWindow::MainWindow(std::unique_ptr<Session> && a_Session):
 	m_Session->startDevices();
 
 	// Set up the session display:
+	if (m_SessionModel != nullptr)
+	{
+		disconnect(m_SessionModel.get(), nullptr, this, nullptr);  // Disconnect all signals from current session to this window
+	}
 	m_SessionModel.reset(new SessionModel(m_Session.get()));
+	connect(m_SessionModel.get(), &SessionModel::deviceItemCreated, this, &MainWindow::expandDeviceItem);
 	m_UI->tvSession->setModel(m_SessionModel.get());
 
 	// Expand the online devices:
@@ -70,8 +76,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::connectSignals()
 {
-	connect(m_UI->tvSession, &QTreeView::activated, this, &MainWindow::sessionItemActivated);
-	connect(m_UI->tvSession, &QTreeView::clicked,   this, &MainWindow::sessionItemActivated);
+	connect(m_UI->tvSession,       &QTreeView::activated, this, &MainWindow::sessionItemActivated);
+	connect(m_UI->tvSession,       &QTreeView::clicked,   this, &MainWindow::sessionItemActivated);
+	connect(m_UI->actDeviceAddNew, &QAction::triggered,   this, &MainWindow::addNewDevice);
 }
 
 
@@ -82,6 +89,25 @@ void MainWindow::sessionItemActivated(const QModelIndex & a_Index)
 {
 	m_ContactBookModel->setContactBook(m_SessionModel->getContactBook(a_Index));
 	m_UI->tvContactBook->expandAll();
+}
+
+
+
+
+
+void MainWindow::addNewDevice()
+{
+	DlgAddDevice dlg;
+	dlg.show(*m_Session);
+}
+
+
+
+
+
+void MainWindow::expandDeviceItem(const QModelIndex & a_Index)
+{
+	m_UI->tvSession->expand(a_Index);
 }
 
 
