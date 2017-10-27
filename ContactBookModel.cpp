@@ -1,5 +1,7 @@
 #include "ContactBookModel.h"
 #include <assert.h>
+#include <QElapsedTimer>
+#include <QDebug>
 #include "ContactBook.h"
 #include "DisplayContact.h"
 
@@ -20,10 +22,16 @@ ContactBookModel::ContactBookModel(ContactBookPtr a_ContactBook):
 
 void ContactBookModel::setContactBook(ContactBookPtr a_ContactBook)
 {
+	QElapsedTimer timer;
+	timer.start();
+
 	// Clear previous contents:
 	clear();
 	m_DisplayContacts.clear();
 	setColumnCount(2);
+
+	qDebug() << "ContactBookModel: Clearing previous data took " << timer.elapsed() << " msec.";
+	timer.restart();
 
 	// Insert the current contents:
 	m_ContactBook = a_ContactBook;
@@ -39,6 +47,8 @@ void ContactBookModel::setContactBook(ContactBookPtr a_ContactBook)
 			updateContactItem(item);
 		}
 	}
+
+	qDebug() << "ContactBookModel: Adding new data took " << timer.elapsed() << " msec.";
 }
 
 
