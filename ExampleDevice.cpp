@@ -91,6 +91,6 @@ bool ExampleDevice::load(const QJsonObject & a_Config)
 QJsonObject ExampleDevice::save() const
 {
 	QJsonObject res;
-	res["type"] = "Example";
+	res["type"] = QString::fromUtf8("Example");
 	return res;
 }
