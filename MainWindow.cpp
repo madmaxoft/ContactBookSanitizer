@@ -68,6 +68,7 @@ MainWindow::MainWindow(std::unique_ptr<Session> && a_Session):
 MainWindow::~MainWindow()
 {
 	m_Session->stopDevices();
+	m_Session->saveToFile();
 }
 
 

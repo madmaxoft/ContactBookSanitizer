@@ -57,6 +57,7 @@ bool DeviceCardDav::load(const QJsonObject & a_Config)
 QJsonObject DeviceCardDav::save() const
 {
 	QJsonObject res;
+	res["type"]        = "CardDav";
 	res["displayName"] = m_DisplayName;
 	res["serverUrl"]   = m_ServerUrl;
 	res["userName"]    = m_UserName;

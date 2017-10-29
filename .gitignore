@@ -4,3 +4,7 @@
 
 # Sample contact files:
 *.vcf
+
+
+# Debugging session:
+ContactBookSanitizer.cbsSession

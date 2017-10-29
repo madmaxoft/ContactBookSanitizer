@@ -1,15 +1,18 @@
 #include <QApplication>
 #include <QFile>
+#include <QDir>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QtDebug>
+#include <QMessageBox>
 #include "MainWindow.h"
 #include "Session.h"
 #include "ContactBook.h"
 #include "Device.h"
 #include "ExampleDevice.h"
 #include "DeviceVcfFile.h"
+#include "Exceptions.h"
 
 
 
@@ -34,69 +37,57 @@ std::unique_ptr<Session> makeExampleSession()
 
 
 
-/** Loads the session from the specified filename.
-Returns the loaded session, or nullptr if the loading failed. */
-std::unique_ptr<Session> loadSessionFromFile(const QString & a_FileName)
-{
-	// Read the JSON from the file:
-	QFile file(a_FileName);
-	if (!file.open(QFile::ReadOnly | QFile::Text))
-	{
-		return nullptr;
-	}
-	QJsonParseError err;
-	auto doc = QJsonDocument::fromJson(file.readAll(), &err);
-	if (err.error == QJsonParseError::NoError)
-	{
-		qWarning() << "Cannot parse file " << a_FileName << ": " << err.errorString();
-		return nullptr;
-	}
-
-	// Create devices based on the JSON:
-	std::unique_ptr<Session> session(new Session);
-	const auto & devices = doc.object()["devices"];
-	for (const auto & device: devices.toArray())
-	{
-		auto dev = Device::createFromConfig(device.toObject());
-		if (dev != nullptr)
-		{
-			session->addDevice(std::move(dev));
-		}
-	}
-	if (session->getDevices().empty())
-	{
-		return nullptr;
-	}
-
-	return session;
-}
-
-
-
-
-
 /** Loads the session, either from the current folder ("portable app") or from the user's home.
 If neither contain any reasonable data, creates an empty data file. */
 std::unique_ptr<Session> loadSession()
 {
 	// First try loading from the current folder ("portable app"):
-	auto session = loadSessionFromFile("ContactBookSanitizer.cbsSession");
+	auto session = Session::loadFromFile("ContactBookSanitizer.cbsSession");
 	if (session != nullptr)
 	{
 		return session;
 	}
 
 	// No current folder data, load from user's home:
-	// QDir::
-	session = loadSessionFromFile(/* TODO */ "ContactBookSanitizer.cbsSession");
+	auto homePath = QDir::homePath() + "/";
+	session = Session::loadFromFile(homePath + "ContactBookSanitizer.cbsSession");
 	if (session != nullptr)
 	{
 		return session;
 	}
 
 	// No data could be read, create a new example session file
-	// TODO: First try writing it to the current folder; if it fails, we're installed, if it succeeds, we're portable
+	qDebug() << "No session could be loaded. Creating a new session with example data.";
 	session = makeExampleSession();
+
+	// First try writing session to the current folder; if it fails, we're installed, if it succeeds, we're portable
+	try
+	{
+		session->saveToFile("ContactBookSanitizer.cbsSession");
+		qDebug() << "Detected a portable installation, session will be stored in current folder.";
+		return session;
+	}
+	catch (const EFileError & exc)
+	{
+		qDebug()
+			<< "Failed to write the session file to current folder: " << exc.m_Message
+			<< "; this usually means we're running in installed mode. Will retry the home path.";
+	}
+
+	// We're installed, save to local home:
+	try
+	{
+		session->saveToFile(homePath + "ContactBookSanitizer.cbsSession");
+		qDebug() << "Detected an installed environment, session will be stored in home path: " << homePath;
+		return session;
+	}
+	catch (const EFileError & exc)
+	{
+		QString msg("Failed to write the session file to both current folder and the home path: %1; session data will be lost after you close the app.");
+		msg.arg(exc.m_Message);
+		qWarning() << msg;
+		QMessageBox::warning(nullptr, QString::fromUtf8("ContactBookSanitizer"), msg);
+	}
 	return session;
 }
 

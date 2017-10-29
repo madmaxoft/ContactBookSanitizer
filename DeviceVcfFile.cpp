@@ -103,6 +103,7 @@ bool DeviceVcfFile::load(const QJsonObject & a_Config)
 QJsonObject DeviceVcfFile::save() const
 {
 	QJsonObject res;
+	res["type"] = "VcfFile";
 	res["fileName"] = m_VcfFileName;
 	return res;
 }

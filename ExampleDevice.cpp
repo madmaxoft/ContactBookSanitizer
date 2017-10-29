@@ -90,5 +90,7 @@ bool ExampleDevice::load(const QJsonObject & a_Config)
 
 QJsonObject ExampleDevice::save() const
 {
-	return QJsonObject();
+	QJsonObject res;
+	res["type"] = "Example";
+	return res;
 }

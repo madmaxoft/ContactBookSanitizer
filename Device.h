@@ -66,6 +66,17 @@ public:
 	The default implementation searches the results of getContactBooks(), the first match is returned. */
 	virtual ContactBookPtr getSharedContactBook(const ContactBook * a_ContactBook);
 
+	/** Loads the Device-specific data from the configuration.
+	a_Config is a config returned by save() in a previous app run, through which a Device descendant is
+	expected to persist its logical state - connection settings, login etc.
+	Returns true on success, false on failure. */
+	virtual bool load(const QJsonObject & a_Config) = 0;
+
+	/** Saves the Device-specific config data, so that the Device can be re-created next time
+	the app is started. The descendants are expected to save their logical state - connection settings,
+	login etc. */
+	virtual QJsonObject save() const = 0;
+
 
 signals:
 
@@ -84,17 +95,6 @@ signals:
 
 
 protected:
-
-	/** Loads the Device-specific data from the configuration.
-	a_Config is a config returned by save() in a previous app run, through which a Device descendant is
-	expected to persist its logical state - connection settings, login etc.
-	Returns true on success, false on failure. */
-	virtual bool load(const QJsonObject & a_Config) = 0;
-
-	/** Saves the Device-specific config data, so that the Device can be re-created next time
-	the app is started. The descendants are expected to save their logical state - connection settings,
-	login etc. */
-	virtual QJsonObject save() const = 0;
 
 	/** Creates a new Device subclass instance based on the specified type. */
 	static std::unique_ptr<Device> createFromType(const QString & a_Type);
