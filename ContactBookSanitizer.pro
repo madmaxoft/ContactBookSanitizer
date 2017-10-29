@@ -37,7 +37,8 @@ SOURCES += \
 	VCardParser.cpp \
 	Contact.cpp \
 	DisplayContact.cpp \
-	DlgAddDevice.cpp
+	DlgAddDevice.cpp \
+	DeviceCardDav.cpp
 
 HEADERS  += \
 	MainWindow.h \
@@ -52,9 +53,12 @@ HEADERS  += \
 	Exceptions.h \
 	Contact.h \
 	DisplayContact.h \
-	DlgAddDevice.h
+	DlgAddDevice.h \
+	DeviceCardDav.h
 
-FORMS    += MainWindow.ui
+FORMS    += \
+	MainWindow.ui \
+	WizAddDeviceCardDav.ui
 
 RESOURCES += \
 	res.qrc

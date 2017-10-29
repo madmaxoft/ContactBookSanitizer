@@ -83,6 +83,10 @@ bool DeviceVcfFile::isOnline() const
 bool DeviceVcfFile::load(const QJsonObject & a_Config)
 {
 	m_VcfFileName = a_Config["fileName"].toString();
+	if (m_VcfFileName.isEmpty())
+	{
+		return false;
+	}
 
 	// Strip away the path:
 	QFileInfo fi(m_VcfFileName);

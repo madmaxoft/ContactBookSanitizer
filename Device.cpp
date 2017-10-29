@@ -2,6 +2,7 @@
 #include <QtDebug>
 #include "ExampleDevice.h"
 #include "DeviceVcfFile.h"
+#include "DeviceCardDav.h"
 
 
 
@@ -21,12 +22,14 @@ std::unique_ptr<Device> Device::createFromConfig(const QJsonObject & a_Config)
 	auto dev = createFromType(type);
 	if (dev == nullptr)
 	{
+		qWarning() << "Failed to create device of type " << type;
 		return nullptr;
 	}
 
 	// Load the device config:
 	if (!dev->load(a_Config))
 	{
+		qWarning() << "Failed to load device of type " << type;
 		return nullptr;
 	}
 	return dev;
@@ -61,6 +64,10 @@ std::unique_ptr<Device> Device::createFromType(const QString & a_Type)
 	if (a_Type == "VcfFile")
 	{
 		return std::unique_ptr<Device>(new DeviceVcfFile);
+	}
+	if (a_Type == "CardDav")
+	{
+		return std::unique_ptr<Device>(new DeviceCardDav);
 	}
 
 	// TODO: Other device types

@@ -87,7 +87,8 @@ protected:
 
 	/** Loads the Device-specific data from the configuration.
 	a_Config is a config returned by save() in a previous app run, through which a Device descendant is
-	expected to persist its logical state - connection settings, login etc. */
+	expected to persist its logical state - connection settings, login etc.
+	Returns true on success, false on failure. */
 	virtual bool load(const QJsonObject & a_Config) = 0;
 
 	/** Saves the Device-specific config data, so that the Device can be re-created next time

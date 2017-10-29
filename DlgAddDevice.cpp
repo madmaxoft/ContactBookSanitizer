@@ -10,6 +10,7 @@
 #include <QFileDialog>
 #include "Session.h"
 #include "Device.h"
+#include "ui_WizAddDeviceCardDav.h"
 
 
 
@@ -23,8 +24,9 @@ DlgAddDevice::DlgAddDevice()
 	setWindowTitle(tr("Add a new device"));
 
 	// Add all the pages:
-	setPage(pgDeviceType, new WizDeviceType(m_DeviceConfig));
-	setPage(pgVcfFileName, new WizVcfFile(m_DeviceConfig));
+	setPage(pgDeviceType,    new WizDeviceType(m_DeviceConfig));
+	setPage(pgVcfFileName,   new WizVcfFile(m_DeviceConfig));
+	setPage(pgCardDavServer, new WizCardDav(m_DeviceConfig));
 
 	setStartId(pgDeviceType);
 }
@@ -77,6 +79,10 @@ WizDeviceType::WizDeviceType(QJsonObject & a_DeviceConfig):
 	itemVcfFile->setIcon(QIcon(":/res/DevTypeVcfFile.png"));
 	itemVcfFile->setData("VcfFile");
 	m_Model.appendRow(itemVcfFile);
+	auto itemCardDav = new QStandardItem(tr("CardDAV server"));
+	itemCardDav->setIcon(QIcon(":/res/DevTypeCardDav.png"));
+	itemCardDav->setData("CardDav");
+	m_Model.appendRow(itemCardDav);
 
 	// Create the UI:
 	auto verticalLayout = new QVBoxLayout(this);
@@ -112,6 +118,10 @@ int WizDeviceType::nextId() const
 	{
 		return DlgAddDevice::pgVcfFileName;
 	}
+	if (devType == "CardDav")
+	{
+		return DlgAddDevice::pgCardDavServer;
+	}
 	assert(!"Unknown device type");
 	return -1;
 }
@@ -133,6 +143,10 @@ bool WizDeviceType::isComplete() const
 		return true;
 	}
 	if (devType == "VcfFile")
+	{
+		return true;
+	}
+	if (devType == "CardDav")
 	{
 		return true;
 	}
@@ -270,6 +284,64 @@ void WizVcfFile::browsePressed()
 void WizVcfFile::fileNameChanged()
 {
 	m_DeviceConfig["fileName"] = m_leFileName->text();
+	emit completeChanged();
+}
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// WizCardDav:
+
+WizCardDav::WizCardDav(QJsonObject & a_DeviceConfig):
+	m_DeviceConfig(a_DeviceConfig),
+	m_UI(new Ui::WizAddDeviceCardDav)
+{
+	m_UI->setupUi(this);
+	setTitle(tr("CardDAV server connection settings"));
+	setFinalPage(true);
+
+	connect(m_UI->leDisplayName, &QLineEdit::textChanged, this, &WizCardDav::updateConfig);
+	connect(m_UI->leServerUrl,   &QLineEdit::textChanged, this, &WizCardDav::updateConfig);
+	connect(m_UI->leUserName,    &QLineEdit::textChanged, this, &WizCardDav::updateConfig);
+	connect(m_UI->lePassword,    &QLineEdit::textChanged, this, &WizCardDav::updateConfig);
+}
+
+
+
+
+
+WizCardDav::~WizCardDav()
+{
+	// No explicit code needed, but the destructor still needs to be in the CPP file,
+	// otherwise the m_UI destructor is generated in the header file and it doesn't have the UI class definition.
+}
+
+
+
+
+
+bool WizCardDav::isComplete() const
+{
+	return (
+		!m_DeviceConfig["serverUrl"].toString().isEmpty() &&
+		!m_DeviceConfig["userName"].toString().isEmpty() &&
+		!m_DeviceConfig["password"].toString().isEmpty()
+	);
+}
+
+
+
+
+
+void WizCardDav::updateConfig(const QString &)
+{
+	m_DeviceConfig["displayName"] = m_UI->leDisplayName->text();
+	m_DeviceConfig["serverUrl"]   = m_UI->leServerUrl->text();
+	m_DeviceConfig["userName"]    = m_UI->leUserName->text();
+	m_DeviceConfig["password"]    = m_UI->lePassword->text();
+
 	emit completeChanged();
 }
 
