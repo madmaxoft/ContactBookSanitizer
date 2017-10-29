@@ -19,6 +19,10 @@
 class Session;
 class QItemSelection;
 class QLineEdit;
+namespace Ui
+{
+	class WizAddDeviceCardDav;
+}
 
 
 
@@ -37,6 +41,7 @@ public:
 	{
 		pgDeviceType = 1,
 		pgVcfFileName,
+		pgCardDavServer,
 	};
 
 
@@ -134,6 +139,45 @@ private slots:
 
 	/** Saves the filename from m_leFileName into m_DeviceConfig. */
 	void fileNameChanged();
+};
+
+
+
+
+
+/** Wizard page: CardDav login */
+class WizCardDav:
+	public QWizardPage
+{
+	Q_OBJECT
+	using Super = QWizardPage;
+
+
+public:
+
+	/** Creates an instance of this page.
+	a_DeviceConfig is the JSON config shared with the parent wizard, where the data is to be written. */
+	WizCardDav(QJsonObject & a_DeviceConfig);
+
+	// Destructor must be defined in the CPP file, so that the m_UI class definition can be postponed there as well
+	~WizCardDav();
+
+	// QWizardPage overrides:
+	virtual bool isComplete() const override;
+
+protected:
+
+	/** The configuration for the newly created device, shared from the main wizard object. */
+	QJsonObject & m_DeviceConfig;
+
+	/** The UI */
+	std::unique_ptr<Ui::WizAddDeviceCardDav> m_UI;
+
+
+protected slots:
+
+	/** Updates m_DeviceConfig based on all UI members. */
+	void updateConfig(const QString & /* ignored */);
 };
 
 
