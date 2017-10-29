@@ -19,7 +19,7 @@ std::unique_ptr<Device> Device::createFromConfig(const QJsonObject & a_Config)
 
 	// Create the device subclass instance, based on type:
 	auto dev = createFromType(type);
-	if (type == nullptr)
+	if (dev == nullptr)
 	{
 		return nullptr;
 	}
