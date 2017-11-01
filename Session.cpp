@@ -31,6 +31,23 @@ void Session::addDevice(std::unique_ptr<Device> a_Device)
 
 
 
+void Session::delDevice(const Device * a_Device)
+{
+	for (auto itr = m_Devices.begin(), end = m_Devices.end(); itr != end; ++itr)
+	{
+		if (itr->get() == a_Device)
+		{
+			emit removingDevice(a_Device);
+			m_Devices.erase(itr);
+			return;
+		}
+	}
+}
+
+
+
+
+
 void Session::startDevices()
 {
 	for (auto & dev: m_Devices)

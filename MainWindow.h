@@ -16,6 +16,7 @@
 class Session;
 class SessionModel;
 class ContactBookModel;
+class Device;
 namespace Ui
 {
 	class MainWindow;
@@ -37,6 +38,11 @@ public:
 
 	explicit MainWindow(std::unique_ptr<Session> && a_Session);
 	~MainWindow();
+
+	/** Returns the device that is currently selected in the tree view.
+	If a device's subitem is selected, still returns the device for that subitem.
+	Returns nullptr if no device selected. */
+	Device * selectedDevice();
 
 
 private:
@@ -64,6 +70,9 @@ private slots:
 
 	/** Shows the "Add new device" dialog. */
 	void addNewDevice(void);
+
+	/** Deletes the currently selected device, after confirmation. */
+	void delDevice(void);
 
 	/** Expands the device item represented by the model.
 	Triggered by m_SessionModel after a new device is added. */

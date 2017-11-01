@@ -77,7 +77,7 @@ signals:
 	void addedDevice(Device * a_Device);
 
 	/** Emitted before a device is removed from the session. */
-	void removingDevice(Device * a_Device);
+	void removingDevice(const Device * a_Device);
 
 public slots:
 };
