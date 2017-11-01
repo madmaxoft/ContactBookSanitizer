@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include <QMessageBox>
 #include "ui_MainWindow.h"
 #include "Session.h"
 #include "SessionModel.h"
@@ -80,6 +81,7 @@ void MainWindow::connectSignals()
 	connect(m_UI->tvSession,       &QTreeView::activated, this, &MainWindow::sessionItemActivated);
 	connect(m_UI->tvSession,       &QTreeView::clicked,   this, &MainWindow::sessionItemActivated);
 	connect(m_UI->actDeviceAddNew, &QAction::triggered,   this, &MainWindow::addNewDevice);
+	connect(m_UI->actDeviceDel,    &QAction::triggered,   this, &MainWindow::delDevice);
 }
 
 
@@ -100,6 +102,45 @@ void MainWindow::addNewDevice()
 {
 	DlgAddDevice dlg;
 	dlg.show(*m_Session);
+}
+
+
+
+
+
+void MainWindow::delDevice()
+{
+	auto dev = selectedDevice();
+	if (dev == nullptr)
+	{
+		return;
+	}
+
+	// Ask the user:
+	auto res = QMessageBox::question(this, tr("ContactBookSanitizer"),
+		tr("Are you sure you want to remove the device %1?").arg(dev->displayName()),
+		QMessageBox::Yes, QMessageBox::No | QMessageBox::Default | QMessageBox::Escape
+	);
+	if (res != QMessageBox::Yes)
+	{
+		return;
+	}
+
+	m_Session->delDevice(dev);
+}
+
+
+
+
+
+Device * MainWindow::selectedDevice(void)
+{
+	auto sel = m_UI->tvSession->selectionModel()->selectedIndexes();
+	if (sel.isEmpty())
+	{
+		return nullptr;
+	}
+	return m_SessionModel->deviceFromIndex(sel.at(0));
 }
 
 

@@ -38,6 +38,11 @@ public:
 	/** Resets the model to display the specified session. */
 	void setSession(Session * a_Session);
 
+	/** Returns the device corresponding to the specified item.
+	Works for device's subitems, too, still returns the corresponding device.
+	Returns nullptr if the item doesn't represent a device at all. */
+	Device * deviceFromIndex(const QModelIndex & a_Index) const;
+
 	/** Returns the contact book that is represented by the specified model index.
 	Returns nullptr if the model index doesn't represent a ContactBook. */
 	ContactBookPtr getContactBook(const QModelIndex & a_Index) const;
@@ -63,6 +68,10 @@ protected:
 	Returns one of m_RootOnline, m_RootOffline or m_RootBackups. */
 	QStandardItem * getRootForDevice(const Device & a_Device);
 
+	/** Returns the item representing the specified device.
+	Returns nullptr if no such item exists. */
+	QStandardItem * findDeviceItem(const Device * a_Device);
+
 
 protected slots:
 
@@ -70,7 +79,7 @@ protected slots:
 	void addDevice(Device * a_Device);
 
 	/** Removes the item representing the device. */
-	void removeDevice(Device * a_Device);
+	void removeDevice(const Device * a_Device);
 
 
 signals:

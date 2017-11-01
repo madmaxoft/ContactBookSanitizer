@@ -73,7 +73,7 @@
      <x>0</x>
      <y>0</y>
      <width>1173</width>
-     <height>21</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -87,6 +87,7 @@
      <string>&amp;Device</string>
     </property>
     <addaction name="actDeviceAddNew"/>
+    <addaction name="actDeviceDel"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Device"/>
@@ -111,6 +112,11 @@
   <action name="actDeviceAddNew">
    <property name="text">
     <string>Add a &amp;new device...</string>
+   </property>
+  </action>
+  <action name="actDeviceDel">
+   <property name="text">
+    <string>&amp;Remove device...</string>
    </property>
   </action>
  </widget>
