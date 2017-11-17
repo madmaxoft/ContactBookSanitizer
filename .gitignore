@@ -8,3 +8,8 @@
 
 # Debugging session:
 ContactBookSanitizer.cbsSession
+
+
+
+# Debugging output files:
+response*.log

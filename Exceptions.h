@@ -20,16 +20,16 @@ class EException:
 
 public:
 
-	/** The filename where the exception was thrown. */
-	std::string m_FileName;
+	/** The source file name where the exception was thrown. */
+	std::string m_SrcFileName;
 
-	/** The line number where the exception was thrown. */
-	int m_Line;
+	/** The source file line number where the exception was thrown. */
+	int m_SrcLine;
 
-	explicit EException(const char * a_FileName, int a_Line):
+	explicit EException(const char * a_SrcFileName, int a_SrcLine):
 		Super("EException"),
-		m_FileName(a_FileName),
-		m_Line(a_Line)
+		m_SrcFileName(a_SrcFileName),
+		m_SrcLine(a_SrcLine)
 	{
 	}
 };
@@ -49,8 +49,8 @@ public:
 	std::string m_Message;
 
 
-	explicit EParseError(const char * a_FileName, int a_Line, const char * a_Message):
-		Super(a_FileName, a_Line),
+	explicit EParseError(const char * a_SrcFileName, int a_SrcLine, const char * a_Message):
+		Super(a_SrcFileName, a_SrcLine),
 		m_Message(a_Message)
 	{
 	}
@@ -67,7 +67,7 @@ class EFileError:
 
 public:
 	/** The file on which the operation failed. */
-	QString m_FileName;
+	QString m_OperationFileName;
 
 	/** The description of the failure. */
 	QString m_Message;
@@ -78,11 +78,37 @@ public:
 	a_Message is the description of the failure. */
 	explicit EFileError(
 		const char * a_SrcFileName, int a_SrcLine,
-		const QString & a_FileName,
+		const QString & a_OperationFileName,
 		const QString & a_Message
 	):
 		Super(a_SrcFileName, a_SrcLine),
-		m_FileName(a_FileName),
+		m_OperationFileName(a_OperationFileName),
+		m_Message(a_Message)
+	{
+	}
+};
+
+
+
+
+
+class EDavResponseException:
+	public EException
+{
+	using Super = EException;
+
+
+public:
+
+	/** The description of the failure. */
+	QString m_Message;
+
+
+	explicit EDavResponseException(
+		const char * a_SrcFileName, int a_SrcLine,
+		const QString & a_Message
+	):
+		Super(a_SrcFileName, a_SrcLine),
 		m_Message(a_Message)
 	{
 	}
