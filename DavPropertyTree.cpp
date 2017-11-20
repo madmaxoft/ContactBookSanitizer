@@ -3,6 +3,7 @@
 #include <QAuthenticator>
 #include <QFile>
 #include "Exceptions.h"
+#include "DavPropertyHandlers.h"
 
 
 
@@ -58,7 +59,29 @@ static void logReply(QNetworkReply * a_Reply, const QByteArray & a_ResponseBody)
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// DavPropertyTree::TextProperty:
+
+static DavPropertyHandlers::Registrator g_RegDisplayName(NS_DAV, "displayname", std::make_shared<DavPropertyTree::TextProperty>());
+
+std::shared_ptr<DavPropertyTree::Property> DavPropertyTree::TextProperty::createInstance(const QDomNode & a_Node)
+{
+	std::shared_ptr<DavPropertyTree::TextProperty> res(new DavPropertyTree::TextProperty);
+	if (a_Node.hasChildNodes())
+	{
+		res->m_Value = a_Node.firstChild().toText().data();
+	}
+	return res;
+}
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 // DavPropertyTree::HrefProperty:
+
+static DavPropertyHandlers::Registrator g_RegCurrentUser    (NS_DAV,     "current-user-principal", std::make_shared<DavPropertyTree::HrefProperty>());
+static DavPropertyHandlers::Registrator g_RegAddressbookHome(NS_CARDDAV, "addressbook-home-set",   std::make_shared<DavPropertyTree::HrefProperty>());
 
 std::shared_ptr<DavPropertyTree::Property> DavPropertyTree::HrefProperty::createInstance(const QDomNode & a_Node)
 {
@@ -71,8 +94,49 @@ std::shared_ptr<DavPropertyTree::Property> DavPropertyTree::HrefProperty::create
 			res->m_Href = n.firstChild().toText().data();
 			break;
 		}
+		n = n.nextSibling();
 	}
 	return res;
+}
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// DavPropertyTree::ResourceTypeProperty:
+
+static DavPropertyHandlers::Registrator g_RegResType(NS_DAV, "resourcetype", std::make_shared<DavPropertyTree::ResourceTypeProperty>());
+
+std::shared_ptr<DavPropertyTree::Property> DavPropertyTree::ResourceTypeProperty::createInstance(const QDomNode & a_Node)
+{
+	std::shared_ptr<DavPropertyTree::ResourceTypeProperty> res(new DavPropertyTree::ResourceTypeProperty);
+	auto n = a_Node.firstChild();
+	while (!n.isNull())
+	{
+		if (n.isElement())
+		{
+			res->m_ResourceTypes.push_back(std::make_pair(n.namespaceURI(), n.localName()));
+		}
+		n = n.nextSibling();
+	}
+	return res;
+}
+
+
+
+
+
+bool DavPropertyTree::ResourceTypeProperty::hasResourceType(const QString & a_Namespace, const QString & a_LocalName) const
+{
+	for (const auto & rt: m_ResourceTypes)
+	{
+		if ((rt.first == a_Namespace) && (rt.second == a_LocalName))
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 
@@ -158,8 +222,8 @@ void DavPropertyTree::processResponse(const QNetworkReply & a_Reply, const QByte
 			<< "line " << exc.m_SrcLine
 			<< ", Message: " << exc.m_Message;
 		emit responseError(
-			a_Reply,
-			a_Response,
+			&a_Reply,
+			&a_Response,
 			a_Reply.request().attribute(QNetworkRequest::User),
 			tr("%1 (%2:%3)")
 				.arg(exc.m_Message)
@@ -175,12 +239,72 @@ void DavPropertyTree::processResponse(const QNetworkReply & a_Reply, const QByte
 
 DavPropertyTree::Node & DavPropertyTree::node(const QUrl & a_Url)
 {
-	auto & res = m_NodeMap[a_Url];
-	if (res == nullptr)
+	auto itr = m_NodeMap.find(a_Url);
+	if (itr != m_NodeMap.end())
 	{
-		res.reset(new Node(a_Url));
+		// The URL exists, return it:
+		return **itr;
 	}
+
+	// URL not found, try appending or losing the trailing slash (whichever is appropriate):
+	auto anotherUrlStr = a_Url.toString();
+	QUrl anotherUrl;
+	if (anotherUrlStr.endsWith('/'))
+	{
+		anotherUrl.setUrl(anotherUrlStr.left(anotherUrlStr.length() - 1));
+	}
+	else
+	{
+		anotherUrl.setUrl(anotherUrlStr + "/");
+	}
+	auto itr2 = m_NodeMap.find(anotherUrl);
+	if (itr2 != m_NodeMap.end())
+	{
+		// The trailing-slash-switched counterpart of the URL exists, use it instead of the original URL:
+		return **itr2;
+	}
+
+	// The URL doesn't exist in our storage, create it:
+	auto & res = m_NodeMap[a_Url];
+	res.reset(new Node(a_Url));
 	return *res;
+}
+
+
+
+
+
+QUrl DavPropertyTree::urlFromHref(const QString & a_Href) const
+{
+	return m_BaseUrl.resolved(a_Href);
+}
+
+
+
+
+
+QList<QUrl> DavPropertyTree::nodeChildren(const QUrl & a_NodeUrl)
+{
+	auto parentPath = a_NodeUrl.path();
+	QList<QUrl> res;
+	for (auto itr = m_NodeMap.constBegin(), end = m_NodeMap.constEnd(); itr != end; ++itr)
+	{
+		const auto & url = itr.key();
+		if (a_NodeUrl.isParentOf(url))
+		{
+			auto childPath = url.path();
+			auto diff = childPath.mid(parentPath.length());
+			if (diff.endsWith('/'))
+			{
+				diff.remove(diff.length() - 1, 1);
+			}
+			if (!diff.contains('/'))
+			{
+				res.append(url);
+			}
+		}
+	}
+	return res;
 }
 
 
@@ -225,7 +349,7 @@ void DavPropertyTree::internalProcessResponse(const QNetworkReply & a_Reply, con
 					if (n2.localName() == "response")
 					{
 						// Process a "response" element
-						processElementResponse(a_Reply, a_Response, n2);
+						processElementResponse(n2);
 					}
 				}
 				n2 = n2.nextSibling();
@@ -246,11 +370,7 @@ void DavPropertyTree::internalProcessResponse(const QNetworkReply & a_Reply, con
 
 
 
-void DavPropertyTree::processElementResponse(
-	const QNetworkReply & a_Reply,
-	const QByteArray & a_ResponseBody,
-	const QDomNode & a_ResponseElement
-)
+void DavPropertyTree::processElementResponse(const QDomNode & a_ResponseElement)
 {
 	qDebug() << __FUNCTION__ << ": Processing <response> element.";
 
@@ -280,7 +400,7 @@ void DavPropertyTree::processElementResponse(
 		{
 			if (n.localName() == "propstat")
 			{
-				processElementPropstat(a_Reply, a_ResponseBody, href, n);
+				processElementPropstat(href, n);
 			}
 		}
 		n = n.nextSibling();
@@ -291,8 +411,6 @@ void DavPropertyTree::processElementResponse(
 
 
 void DavPropertyTree::processElementPropstat(
-	const QNetworkReply & a_Reply,
-	const QByteArray & a_ResponseBody,
 	const QString & a_Href,
 	const QDomNode & a_PropstatElement
 )
@@ -362,7 +480,7 @@ void DavPropertyTree::processElementPropstat(
 	}
 
 	// The status is OK, process the property:
-	processElementProp(href, propElement);
+	processElementProp(a_Href, propElement);
 }
 
 
@@ -370,9 +488,32 @@ void DavPropertyTree::processElementPropstat(
 
 void DavPropertyTree::processElementProp(const QString & a_Href, const QDomNode & a_PropElement)
 {
-	auto n = this->node(a_Href);
-	auto handler = findPropHandler(a_PropElement.namespaceURI(), a_PropElement.localName());
-
+	qDebug() << __FUNCTION__ << ": Processing <prop> element.";
+	auto & n = this->node(urlFromHref(a_Href));
+	const auto & children = a_PropElement.childNodes();
+	int size = children.size();
+	for (int i = 0; i < size; ++i)
+	{
+		const auto & child = children.at(i);
+		auto handler = DavPropertyHandlers::find(child.namespaceURI(), child.localName());
+		if (handler == nullptr)
+		{
+			qDebug()
+				<< __FUNCTION__ << ": No handler for property "
+				<< child.namespaceURI() << ":" << child.localName();
+			continue;
+		}
+		auto inst = handler->createInstance(child);
+		if (inst == nullptr)
+		{
+			qDebug()
+				<< __FUNCTION__ << ": Failed to create property instance for property "
+				<< child.namespaceURI() << ":" << child.localName();
+			continue;
+		}
+		n.addProperty(child.namespaceURI(), child.localName(), inst);
+		qDebug() << __FUNCTION__ << ": Added property " << child.namespaceURI() << ":" << child.localName();
+	}
 }
 
 
@@ -390,7 +531,7 @@ void DavPropertyTree::internalRequestFinished(QNetworkReply * a_Reply)
 	{
 		processResponse(*a_Reply, baResp);
 	}
-	emit requestFinished(*a_Reply, baResp, a_Reply->request().attribute(QNetworkRequest::User));
+	emit requestFinished(a_Reply, &baResp, a_Reply->request().attribute(QNetworkRequest::User));
 }
 
 
@@ -405,6 +546,7 @@ void DavPropertyTree::authenticationRequired(QNetworkReply * a_Reply, QAuthentic
 	a_Auth->setUser(m_UserName);
 	a_Auth->setPassword(m_Password);
 }
+
 
 
 

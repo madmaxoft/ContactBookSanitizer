@@ -12,11 +12,12 @@ static const int PERIODIC_CHECK_SECONDS = 30;
 
 
 
-
 enum
 {
 	reqDetectAddressBookSupport = 1,
 	reqCurrentUserPrincipal,
+	reqAddressbookRoot,
+	reqListAddressbooks,
 };
 
 
@@ -125,6 +126,14 @@ QJsonObject DeviceCardDav::save() const
 
 void DeviceCardDav::respDetectAddressBookSupport(const QNetworkReply & a_Reply)
 {
+	if (a_Reply.error() != QNetworkReply::NoError)
+	{
+		qDebug() << __FUNCTION__ << ": Received an error reply: " << a_Reply.errorString();
+		m_Status = tr("Failed to connect to server");
+		setOffline();
+		return;
+	}
+
 	// Check if the addressbook protocol extension is supported:
 	auto support = a_Reply.rawHeader("DAV").split(',');
 	bool hasAddressBookSupport = false;
@@ -151,8 +160,8 @@ void DeviceCardDav::respDetectAddressBookSupport(const QNetworkReply & a_Reply)
 	QByteArray baReq;
 	QXmlStreamWriter w(&baReq);
 	w.writeStartDocument();
-	w.writeNamespace("DAV:", "d");
-	w.writeNamespace("urn:ietf:params:xml:ns:carddav", "c");
+	w.writeNamespace(NS_DAV, "d");
+	w.writeNamespace(NS_CARDDAV, "c");
 	w.writeStartElement("d:propfind");
 		w.writeStartElement("d:prop");
 			w.writeEmptyElement("d:current-user-principal");
@@ -169,9 +178,50 @@ void DeviceCardDav::respDetectAddressBookSupport(const QNetworkReply & a_Reply)
 
 void DeviceCardDav::respCurrentUserPrincipal(const QNetworkReply & a_Reply)
 {
+	Q_UNUSED(a_Reply);
+
 	// Check that the user principal was in fact returned:
 	const auto & node = m_DavPropertyTree->node(m_ServerUrl);
-	auto prop = node.findProp<DavPropertyTree::HrefProperty>("DAV:", "current-user-principal");
+	auto prop = node.findProp<DavPropertyTree::HrefProperty>(NS_DAV, "current-user-principal");
+	if (prop == nullptr)
+	{
+		qDebug() << __FUNCTION__ << ": current user principal not found";
+		m_Status = tr("Server doesn't accept username / password");
+		setOffline();
+		return;
+	}
+	m_PrincipalUrl = m_DavPropertyTree->urlFromHref(prop->m_Href);
+	qDebug()
+		<< __FUNCTION__ << ": Current user principal detected as "
+		<< m_PrincipalUrl.toString();
+
+	// Ask the current user principal about the addressbook root:
+	QByteArray baReq;
+	QXmlStreamWriter w(&baReq);
+	w.writeStartDocument();
+	w.writeNamespace(NS_DAV, "d");
+	w.writeNamespace(NS_CARDDAV, "c");
+	w.writeStartElement("d:propfind");
+		w.writeStartElement("d:prop");
+			w.writeEmptyElement("c:addressbook-home-set");
+		w.writeEndElement();
+	w.writeEndElement();
+	w.writeEndDocument();
+	qDebug() << __FUNCTION__ << ": Requesting addressbook home set: " << baReq;
+	m_DavPropertyTree->sendRequest(m_PrincipalUrl, "PROPFIND", 0, baReq, reqAddressbookRoot);
+}
+
+
+
+
+
+void DeviceCardDav::respAddressbookRoot(const QNetworkReply & a_Reply)
+{
+	Q_UNUSED(a_Reply);
+
+	// Check that the addressbook home was in fact returned:
+	const auto & node = m_DavPropertyTree->node(m_PrincipalUrl);
+	auto prop = node.findProp<DavPropertyTree::HrefProperty>(NS_CARDDAV, "addressbook-home-set");
 	if (prop == nullptr)
 	{
 		qDebug() << __FUNCTION__ << ": current user principal not found";
@@ -180,9 +230,137 @@ void DeviceCardDav::respCurrentUserPrincipal(const QNetworkReply & a_Reply)
 		return;
 	}
 	qDebug()
-		<< __FUNCTION__ << ": Current user principal detected as "
+		<< __FUNCTION__ << ": Addressbook home detected as "
 		<< prop->m_Href;
-	// TODO
+
+	m_AddressbookHomeUrl = m_DavPropertyTree->urlFromHref(prop->m_Href);
+
+	// List all addressbooks:
+	QByteArray baReq;
+	QXmlStreamWriter w(&baReq);
+	w.writeStartDocument();
+	w.writeNamespace(NS_DAV, "d");
+	w.writeNamespace(NS_CARDDAV, "c");
+	w.writeStartElement("d:propfind");
+		w.writeStartElement("d:prop");
+			w.writeEmptyElement("d:resourcetype");
+			w.writeEmptyElement("d:displayname");
+		w.writeEndElement();
+	w.writeEndElement();
+	w.writeEndDocument();
+	qDebug() << __FUNCTION__ << ": Requesting addressbook list: " << baReq;
+	m_DavPropertyTree->sendRequest(m_AddressbookHomeUrl, "PROPFIND", 1, baReq, reqListAddressbooks);
+}
+
+
+
+
+
+void DeviceCardDav::respListAddressbooks(const QNetworkReply & a_Reply)
+{
+	Q_UNUSED(a_Reply);
+
+	// Pick addressbooks from the m_AddressbookHomeUrl's children:
+	QList<QUrl> addressBookUrls;
+	auto children = m_DavPropertyTree->nodeChildren(m_AddressbookHomeUrl);
+	for (const auto & child: children)
+	{
+		const auto & node = m_DavPropertyTree->node(child);
+		auto restype = node.findProp<DavPropertyTree::ResourceTypeProperty>(NS_DAV, "resourcetype");
+		if (restype != nullptr)
+		{
+			if (restype->hasResourceType(NS_CARDDAV, "addressbook"))
+			{
+				qDebug() << __FUNCTION__ << ": Got an addressbook: " << child.toString();
+				addressBookUrls.push_back(child);
+			}
+		}
+	}
+
+	// Remove the m_ContactBooks that are no longer present:
+	for (auto itr = m_ContactBooks.begin(); itr != m_ContactBooks.end();)
+	{
+		const auto & baseUrl = (*itr)->m_BaseUrl;
+		bool isPresent = false;
+		for (const auto & abu: addressBookUrls)
+		{
+			if (baseUrl == abu)
+			{
+				isPresent = true;
+				break;
+			}
+		}
+		if (!isPresent)
+		{
+			qDebug() << __FUNCTION__ << ": Removing contactbook " << (*itr)->displayName();
+			emit delContactBook(itr->get());
+			itr = m_ContactBooks.erase(itr);
+		}
+		else
+		{
+			++itr;
+		}
+	}
+
+	// Add the new addressbooks not yet present in m_ContactBooks:
+	for (const auto & abu: addressBookUrls)
+	{
+		bool isPresent = false;
+		for (const auto & cb: m_ContactBooks)
+		{
+			if (cb->m_BaseUrl == abu)
+			{
+				isPresent = true;
+				break;
+			}
+		}
+		if (!isPresent)
+		{
+			auto displayName = displayNameForAdressbook(abu);
+			qDebug() << __FUNCTION__ << ": Adding contactbook " << displayName;
+			auto cb = std::make_shared<DavContactBook>(abu, displayName);
+			m_ContactBooks.push_back(cb);
+			emit addContactBook(cb);
+		}
+	}
+
+	// The server has replied successfully to all our queries, mark it as online:
+	setOnline();
+}
+
+
+
+
+
+QString DeviceCardDav::displayNameForAdressbook(const QUrl & a_AddressbookUrl)
+{
+	auto displayNameProp = m_DavPropertyTree->node(a_AddressbookUrl).findProp<DavPropertyTree::TextProperty>(NS_DAV, "displayname");
+	if (displayNameProp != nullptr)
+	{
+		return displayNameProp->m_Value;
+	}
+	auto path = a_AddressbookUrl.path();
+	if (path.endsWith('/'))
+	{
+		path.remove(path.length() - 1, 1);
+	}
+	auto idxLastSlash = path.lastIndexOf('/');
+	if (idxLastSlash > 0)
+	{
+		path.remove(0, idxLastSlash);
+	}
+	return path;
+}
+
+
+
+
+
+void DeviceCardDav::setOnline()
+{
+	qDebug() << __FUNCTION__;
+	m_IsOnline = true;
+	emit online(true);
 }
 
 
@@ -191,8 +369,9 @@ void DeviceCardDav::respCurrentUserPrincipal(const QNetworkReply & a_Reply)
 
 void DeviceCardDav::setOffline()
 {
+	qDebug() << __FUNCTION__;
 	m_IsOnline = false;
-	// TODO: Trigger the online-state-change signals
+	emit online(false);
 }
 
 
@@ -200,15 +379,19 @@ void DeviceCardDav::setOffline()
 
 
 void DeviceCardDav::replyFinished(
-	const QNetworkReply & a_Reply,
-	const QByteArray & a_ResponseBody,
+	const QNetworkReply * a_Reply,
+	const QByteArray * a_ResponseBody,
 	QVariant a_UserData
 )
 {
+	Q_UNUSED(a_ResponseBody);
+
 	switch (a_UserData.toInt())
 	{
-		case reqDetectAddressBookSupport: return respDetectAddressBookSupport(a_Reply);
-		case reqCurrentUserPrincipal:     return respCurrentUserPrincipal(a_Reply);
+		case reqDetectAddressBookSupport: return respDetectAddressBookSupport(*a_Reply);
+		case reqCurrentUserPrincipal:     return respCurrentUserPrincipal(*a_Reply);
+		case reqAddressbookRoot:          return respAddressbookRoot(*a_Reply);
+		case reqListAddressbooks:         return respListAddressbooks(*a_Reply);
 	}
 	qWarning() << __FUNCTION__ << ": Unhandled request type: " << a_UserData;
 }

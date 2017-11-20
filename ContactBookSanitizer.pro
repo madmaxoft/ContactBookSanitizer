@@ -39,7 +39,8 @@ SOURCES += \
 	DisplayContact.cpp \
 	DlgAddDevice.cpp \
 	DeviceCardDav.cpp \
-	DavPropertyTree.cpp
+	DavPropertyTree.cpp \
+	DavPropertyHandlers.cpp
 
 HEADERS  += \
 	MainWindow.h \
@@ -56,7 +57,8 @@ HEADERS  += \
 	DisplayContact.h \
 	DlgAddDevice.h \
 	DeviceCardDav.h \
-	DavPropertyTree.h
+	DavPropertyTree.h \
+	DavPropertyHandlers.h
 
 FORMS    += \
 	MainWindow.ui \
