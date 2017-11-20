@@ -48,6 +48,20 @@ public:
 	};
 
 
+	/** A property that contains only text. */
+	class TextProperty:
+		public Property
+	{
+		using Super = Property;
+
+	public:
+		/** The text contents. */
+		QString m_Value;
+
+		virtual std::shared_ptr<Property> createInstance(const QDomNode & a_Node) override;
+	};
+
+
 	/** A property that contains a single HREF element as its value.
 	If the property doesn't have a HREF value in it, the m_Href will be set to empty string. */
 	class HrefProperty:
@@ -60,6 +74,23 @@ public:
 		QString m_Href;
 
 		virtual std::shared_ptr<Property> createInstance(const QDomNode & a_Node) override;
+	};
+
+
+	/** Property representing (multiple) resource types of an URL object. */
+	class ResourceTypeProperty:
+		public Property
+	{
+		using Super = Property;
+
+	public:
+		/** The resource types, represented as pairs of (namespace, localname). */
+		QList<std::pair<QString, QString>> m_ResourceTypes;
+
+		virtual std::shared_ptr<Property> createInstance(const QDomNode & a_Node) override;
+
+		/** Returns true if the specified resource type is present in m_ResourceTypes. */
+		bool hasResourceType(const QString & a_Namespace, const QString & a_LocalName) const;
 	};
 
 
@@ -124,12 +155,29 @@ public:
 	void processResponse(const QNetworkReply & a_Reply, const QByteArray & a_Response);
 
 	/** Returns the node representation for the specified URL.
-	If such a node doesn't exist, creates a new one and returns that. */
+	If such a node doesn't exist, creates a new one and returns that.
+	If the URL is not present, but differs from an URL present just by a trailing slash, the difference is ignored
+	and the present node is returned. This allows clients to transparently handle servers that return slashed URLs
+	for non-slashed queries. */
 	Node & node(const QUrl & a_Url);
+
+	/** Returns the node representation for the specified Href.
+	If such a node doesn't exist, creates a new one and returns that. */
+	Node & node(const QString & a_Href)
+	{
+		return node(urlFromHref(a_Href));
+	}
 
 	/** Returns true if the specified URL already has a node representation in NodeMap. */
 	bool hasNode(const QUrl & a_Url) const;
 
+	/** Converts a Href string into a fully qualified QUrl.
+	Uses the m_BaseUrl to provide the parts missing from the (possibly relative) href.
+	Also resolves the possible up-dirs ("../") etc.,returning a canonical URL that can be used in the nodemap. */
+	QUrl urlFromHref(const QString & a_Href) const;
+
+	/** Returns URLs of known immediate children of the specified node. */
+	QList<QUrl> nodeChildren(const QUrl & a_NodeUrl);
 
 protected:
 
@@ -159,20 +207,11 @@ protected:
 
 	/** Handles the <DAV:response> element in the multistatus response.
 	May throw EDavResponseException, caller handles that by emitting a responseError() signal. */
-	void processElementResponse(
-		const QNetworkReply & a_Reply,
-		const QByteArray & a_ResponseBody,
-		const QDomNode & a_ResponseElement
-	);
+	void processElementResponse(const QDomNode & a_ResponseElement);
 
 	/** Handles the <DAV:propstat> element inside a <DAV:response> element in the multistatus response.
 	May throw EDavResponseException, caller handles that by emitting a responseError() signal. */
-	void processElementPropstat(
-		const QNetworkReply & a_Reply,
-		const QByteArray & a_ResponseBody,
-		const QString & a_Href,
-		const QDomNode & a_PropstatElement
-	);
+	void processElementPropstat(const QString & a_Href, const QDomNode & a_PropstatElement);
 
 	/** Handles the <DAV:prop> element, its status should already have been checked by the caller.
 	Stores the property in to the storage. */
@@ -185,8 +224,8 @@ signals:
 	a_Reply has already had all its body read, the data is provided in the a_ResponseBody parameter.
 	a_UserData is the data that was supplied for the request in the sendRequest() call. */
 	void requestFinished(
-		const QNetworkReply & a_Reply,
-		const QByteArray & a_ResponseBody,
+		const QNetworkReply * a_Reply,
+		const QByteArray * a_ResponseBody,
 		QVariant a_UserData
 	);
 
@@ -196,8 +235,8 @@ signals:
 	a_UserData is the data that was supplied for the request in the sendRequest() call.
 	a_Error is the error message. */
 	void responseError(
-		const QNetworkReply & a_Reply,
-		const QByteArray & a_ResponseBody,
+		const QNetworkReply * a_Reply,
+		const QByteArray * a_ResponseBody,
 		QVariant a_UserData,
 		const QString & a_Error
 	);
@@ -211,6 +250,13 @@ protected slots:
 	Provides the auth supplied in m_UserName and m_Password. */
 	void authenticationRequired(QNetworkReply * a_Reply, QAuthenticator * a_Auth);
 };
+
+
+
+
+
+static const char NS_DAV[] = "DAV:";
+static const char NS_CARDDAV[] = "urn:ietf:params:xml:ns:carddav";
 
 
 

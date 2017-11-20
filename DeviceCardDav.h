@@ -8,6 +8,7 @@
 #include <QTimer>
 #include "Device.h"
 #include "DavPropertyTree.h"
+#include "ContactBook.h"
 
 
 
@@ -39,10 +40,39 @@ public:
 	virtual bool isOnline() const override;
 
 	/** Returns all the contact books currently available in the device. */
-	virtual const std::vector<ContactBookPtr> contactBooks() override { return m_ContactBooks; }
+	virtual const std::vector<ContactBookPtr> contactBooks() override
+	{
+		std::vector<ContactBookPtr> res;
+		for (const auto & cb: m_ContactBooks)
+		{
+			res.push_back(cb);
+		}
+		return res;
+	}
 
 
 protected:
+
+	/** ContactBook specialization for DAV contact books.
+	Remembers the addressbook's base URL. */
+	class DavContactBook:
+		public ContactBook
+	{
+		using Super = ContactBook;
+
+	public:
+
+		QUrl m_BaseUrl;
+
+		explicit DavContactBook(const QUrl a_BaseUrl, const QString & a_DisplayName):
+			Super(a_DisplayName),
+			m_BaseUrl(a_BaseUrl)
+		{
+		}
+	};
+
+	using DavContactBookPtr = std::shared_ptr<DavContactBook>;
+
 
 	/** The server's base URL. */
 	QUrl m_ServerUrl;
@@ -54,7 +84,7 @@ protected:
 	QString m_Password;
 
 	/** The contact books on the server. */
-	std::vector<ContactBookPtr> m_ContactBooks;
+	std::vector<DavContactBookPtr> m_ContactBooks;
 
 	/** The device name, as displayed to the user. */
 	QString m_DisplayName;
@@ -65,6 +95,12 @@ protected:
 
 	/** Indicates the online state of this device, based on periodic pings to the addressbook API of the server. */
 	bool m_IsOnline;
+
+	/** The current user principal URL. */
+	QUrl m_PrincipalUrl;
+
+	/** The home URL of the address books for this user. */
+	QUrl m_AddressbookHomeUrl;
 
 	/** The timer used for checking the online status of this device periodically.
 	Triggers the periodicCheck() slot. */
@@ -91,6 +127,19 @@ protected:
 	/** Handles the response for current user principal request. */
 	void respCurrentUserPrincipal(const QNetworkReply & a_Reply);
 
+	/** Handles the response for addressbook root query. */
+	void respAddressbookRoot(const QNetworkReply & a_Reply);
+
+	/** Handles the response for addressbook list query. */
+	void respListAddressbooks(const QNetworkReply & a_Reply);
+
+	/** Returns the display name for the specified addressbook.
+	If the server doesn't provide an addressbook displayname, it is synthesized from the URL. */
+	QString displayNameForAdressbook(const QUrl & a_AddressbookUrl);
+
+	/** Marks the device as online. */
+	void setOnline();
+
 	/** Marks the device as offline.
 	TODO: Triggers the online-state-change signals. */
 	void setOffline();
@@ -100,8 +149,8 @@ protected slots:
 
 	/** Triggered when a network request to the CardDAV server finishes. */
 	void replyFinished(
-		const QNetworkReply & a_Reply,
-		const QByteArray & a_ResponseBody,
+		const QNetworkReply * a_Reply,
+		const QByteArray * a_ResponseBody,
 		QVariant a_UserData
 	);
 
