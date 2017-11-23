@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QAuthenticator>
 #include <QFile>
+#include <QBuffer>
 #include "Exceptions.h"
 #include "DavPropertyHandlers.h"
 
@@ -12,7 +13,7 @@
 static void logReply(QNetworkReply * a_Reply, const QByteArray & a_ResponseBody)
 {
 	// Log the reply to Qt log:
-	auto & req = a_Reply->request();
+	const auto & req = a_Reply->request();
 	auto method = req.attribute(QNetworkRequest::CustomVerbAttribute).toString();
 	qDebug() << "Reply finished: " << method << a_Reply->url().toString();
 	qDebug() << "UserData: " << a_Reply->request().attribute(QNetworkRequest::User);
@@ -193,7 +194,17 @@ void DavPropertyTree::sendRequest(
 	req->setAttribute(QNetworkRequest::User, a_UserData);
 	req->setHeader(QNetworkRequest::ContentTypeHeader, "application/xml; charset=utf-8");
 	req->setRawHeader("Depth", QByteArray::number(a_Depth));
-	m_NAM.sendCustomRequest(*req, a_HttpMethod, a_RequestBody);
+
+	// Assign a new QBuffer for the data:
+	auto bufferIndex = m_NextBufferIndex++;
+	m_Buffers[bufferIndex] = std::make_shared<QBuffer>();
+	auto buf = m_Buffers[bufferIndex];
+	buf->setData(a_RequestBody);
+	buf->open(QIODevice::ReadOnly);
+	req->setAttribute(QNetworkRequest::UserMax, bufferIndex);
+
+	// Send the request:
+	m_NAM.sendCustomRequest(*req, a_HttpMethod, buf.get());
 }
 
 
@@ -522,6 +533,10 @@ void DavPropertyTree::processElementProp(const QString & a_Href, const QDomNode 
 
 void DavPropertyTree::internalRequestFinished(QNetworkReply * a_Reply)
 {
+	// Free up the QBuffer that was created for the request's data:
+	auto bufferIndex = a_Reply->request().attribute(QNetworkRequest::UserMax).toUInt();
+	m_Buffers.remove(bufferIndex);
+
 	auto baResp = a_Reply->readAll();
 
 	// DEBUG:

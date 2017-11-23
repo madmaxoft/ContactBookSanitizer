@@ -1,5 +1,6 @@
 # QtCreator settings files:
 *.user
+*.pro.user.*
 
 
 # Sample contact files:
