@@ -293,7 +293,7 @@ void DeviceCardDav::respListAddressbooks(const QNetworkReply & a_Reply)
 		if (!isPresent)
 		{
 			qDebug() << __FUNCTION__ << ": Removing contactbook " << (*itr)->displayName();
-			emit delContactBook(itr->get());
+			emit delContactBook(this, itr->get());
 			itr = m_ContactBooks.erase(itr);
 		}
 		else
@@ -320,7 +320,7 @@ void DeviceCardDav::respListAddressbooks(const QNetworkReply & a_Reply)
 			qDebug() << __FUNCTION__ << ": Adding contactbook " << displayName;
 			auto cb = std::make_shared<DavContactBook>(abu, displayName);
 			m_ContactBooks.push_back(cb);
-			emit addContactBook(cb);
+			emit addContactBook(this, cb);
 		}
 	}
 
@@ -360,7 +360,7 @@ void DeviceCardDav::setOnline()
 {
 	qDebug() << __FUNCTION__;
 	m_IsOnline = true;
-	emit online(true);
+	emit online(this, true);
 }
 
 
@@ -371,7 +371,7 @@ void DeviceCardDav::setOffline()
 {
 	qDebug() << __FUNCTION__;
 	m_IsOnline = false;
-	emit online(false);
+	emit online(this, false);
 }
 
 

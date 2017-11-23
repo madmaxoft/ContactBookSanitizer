@@ -147,8 +147,10 @@ Device * MainWindow::selectedDevice(void)
 
 
 
-void MainWindow::expandDeviceItem(const QModelIndex & a_Index)
+void MainWindow::expandDeviceItem(Device * a_Device, const QModelIndex & a_Index)
 {
+	Q_UNUSED(a_Device);
+
 	m_UI->tvSession->expand(a_Index);
 }
 
