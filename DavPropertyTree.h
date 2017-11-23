@@ -7,12 +7,20 @@
 
 #include <unordered_map>
 #include <memory>
+#include <atomic>
 #include <QString>
 #include <QObject>
 #include <QUrl>
 #include <QHash>
 #include <QNetworkReply>
 #include <QDomDocument>
+
+
+
+
+
+// fwd:
+class QBuffer;
 
 
 
@@ -184,6 +192,9 @@ protected:
 	/** Type for mapping URLs to their representation as a Node instance. */
 	using NodeMap = QHash<QUrl, std::shared_ptr<Node>>;
 
+	/** Type for storing QBuffer instances for each individual request sent. */
+	using BufferMap = QMap<unsigned, std::shared_ptr<QBuffer>>;
+
 
 	/** The base URL for which the tree is built. */
 	QUrl m_BaseUrl;
@@ -199,6 +210,15 @@ protected:
 
 	/** The network access manager used to send the requests to the server. */
 	QNetworkAccessManager m_NAM;
+
+	/** The buffers allocated for requests, waiting to be freed.
+	Each request sent needs a QBuffer instance; one is created for each request and stored here
+	based on the m_NextBufferIndex value; the index is stored in the QNetworkRequest object's Attributes.
+	Once the QNetworkRequest object is finished, the buffer is removed from here, effectively freeing
+	the memory. */
+	BufferMap m_Buffers;
+
+	std::atomic<unsigned> m_NextBufferIndex;
 
 
 	/** Implementation of the response processing.
