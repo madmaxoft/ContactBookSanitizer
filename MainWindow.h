@@ -76,7 +76,7 @@ private slots:
 
 	/** Expands the device item represented by the model.
 	Triggered by m_SessionModel after a new device is added. */
-	void expandDeviceItem(const QModelIndex & a_Index);
+	void expandDeviceItem(Device * a_Device, const QModelIndex & a_Index);
 };
 
 

@@ -41,7 +41,7 @@ QString ExampleDevice::displayName() const
 
 void ExampleDevice::start()
 {
-	emit online(true);
+	emit online(this, true);
 }
 
 

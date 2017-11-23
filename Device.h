@@ -81,17 +81,18 @@ public:
 signals:
 
 	/** Emitted when the device becomes online or offline.
-	When the device becomes offline, new data cannot be read or written to it. */
-	void online(bool a_IsOnline = true);
+	When the device becomes offline, new data cannot be read or written to it.
+	The device should already report isOnline() == a_IsOnline when this is called. */
+	void online(Device * a_Device, bool a_IsOnline = true);
 
 	/** A new contact book has been detected in the device, it should be added to the underlying session. */
-	void addContactBook(ContactBookPtr a_ContactBook);
+	void addContactBook(Device * a_Device, ContactBookPtr a_ContactBook);
 
 	/** The specified contact book is no longer available in the device, it should be removed from
 	the underlying session.
 	Note that the contact book data is still present in the form it was last read, so a backup can be made,
 	but it is already disconnected, so new data cannot be read nor written to it. */
-	void delContactBook(const ContactBook * a_ContactBook);
+	void delContactBook(Device * a_Device, const ContactBook * a_ContactBook);
 
 
 protected:
