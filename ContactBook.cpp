@@ -24,9 +24,22 @@ void ContactBook::setDisplayName(const QString & a_NewDisplayName)
 
 
 
+
+ContactPtr ContactBook::createNewContact()
+{
+	ContactPtr res(new Contact);
+	addContact(res);
+	return res;
+}
+
+
+
+
+
 void ContactBook::addContact(ContactPtr a_Contact)
 {
 	m_Contacts.push_back(a_Contact);
+	// TODO: emit the appropriate signals
 }
 
 

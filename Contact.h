@@ -56,6 +56,9 @@ public:
 
 
 
+	// Force destructors in all descendants to be virtual:
+	virtual ~Contact() {}
+
 	/** Adds a new VCard sentence to the contact. */
 	void addSentence(const Sentence & a_Sentence);
 
