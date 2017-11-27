@@ -8,7 +8,7 @@
 
 
 # Debugging session:
-ContactBookSanitizer.cbsSession
+ContactBookSanitizer*.cbsSession
 
 
 

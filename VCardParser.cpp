@@ -14,12 +14,13 @@
 class VCardParserImpl
 {
 public:
-	/** Creates a new parser instance and binds it to the specified data source and destination contact book. */
-	VCardParserImpl(QIODevice & a_Source, ContactBookPtr a_Dest):
+	/** Creates a new parser instance and binds it to the specified data source and destination contact.
+	a_CurrentLineNum is the line number of the first line in a_Source, used for reporting errors. */
+	VCardParserImpl(QIODevice & a_Source, ContactPtr a_Dest, int a_CurrentLineNum):
 		m_State(psIdle),
 		m_Source(a_Source),
 		m_Dest(a_Dest),
-		m_CurrentLineNum(0)
+		m_CurrentLineNum(a_CurrentLineNum)
 	{
 	}
 
@@ -27,14 +28,24 @@ public:
 
 	/** Parses the source data from m_Source into the bound destination contact book m_Dest.
 	Throws an EException descendant on error. Note that m_Dest may still be filled with some contacts
-	that parsed successfully. */
-	void parse()
+	that parsed successfully.
+	Returns the line number of the line that was last parsed from the source. */
+	int parse()
 	{
 		// Parse line-by-line, unwrap the lines here:
 		QByteArray acc;  // Accumulator for the current line
 		while (!m_Source.atEnd())
 		{
 			QByteArray cur = m_Source.readLine();
+			if (QString::fromUtf8(cur).toLower() == "end:vcard\n")
+			{
+				// This is the last line to be parsed, we can't afford to buffer it in the un-folder
+				if (!acc.isEmpty())
+				{
+					processLine(acc);
+				}
+				return m_CurrentLineNum;
+			}
 			if (
 				!cur.isEmpty() &&
 				(
@@ -53,7 +64,10 @@ public:
 				// This is a (start of a) new line, process the accumulator and store the new line in it:
 				if (!acc.isEmpty())
 				{
-					processLine(acc);
+					if (processLine(acc))
+					{
+						return m_CurrentLineNum;
+					}
 				}
 				std::swap(acc, cur);
 			}
@@ -61,8 +75,12 @@ public:
 		// Process the last line:
 		if (!acc.isEmpty())
 		{
-			processLine(acc);
+			if (!processLine(acc))
+			{
+				throw EParseError(__FILE__, __LINE__, "Contact data is incomplete, missing the END:VCARD sentence.");
+			}
 		}
+		return m_CurrentLineNum;
 	}
 
 
@@ -74,17 +92,15 @@ protected:
 		psIdle,        //< The parser has no current contact, it expects a new "BEGIN:VCARD" sentence
 		psBeginVCard,  //< The parser has just read the "BEGIN:VCARD" line, expects a "VERSION" sentence
 		psContact,     //< The parser is reading individual contact property sentence
+		psFinished,    //< The parser has finished the contact, no more data is expected
 	} m_State;
 
 	/** The source data provider. */
 	QIODevice & m_Source;
 
-	/** The contact book into which the data is to be written. */
-	ContactBookPtr m_Dest;
-
 	/** The current contact being parsed.
 	Only valid in the psContact state. */
-	ContactPtr m_CurrentContact;
+	ContactPtr m_Dest;
 
 	/** The number of the line currently being processed (for error reporting). */
 	int m_CurrentLineNum;
@@ -93,13 +109,15 @@ protected:
 
 
 
-	/** Parses the given single (unfolded) line. */
-	void processLine(const QByteArray & a_Line)
+	/** Parses the given single (unfolded) line.
+	Returns true if this line is a terminator for the contact (no more lines should be parsed for this
+	contact - the "END:VCARD" line). */
+	bool processLine(const QByteArray & a_Line)
 	{
 		m_CurrentLineNum += 1;
 		if (a_Line.isEmpty() || (a_Line == "\n"))
 		{
-			return;
+			return false;
 		}
 		try
 		{
@@ -108,7 +126,20 @@ protected:
 			{
 				case psIdle:       processSentenceIdle(sentence);       break;
 				case psBeginVCard: processSentenceBeginVCard(sentence); break;
-				case psContact:    processSentenceContact(sentence);    break;
+				case psContact:
+				{
+					if (processSentenceContact(sentence))
+					{
+						return true;
+					}
+					break;
+				}
+				case psFinished:
+				{
+					qWarning() << __FUNCTION__ << ": The parser has already finished parsing the contacts.";
+					assert(!"Parsing already finished, should not be here");
+					return true;
+				}
 			}
 		}
 		catch (const EParseError & exc)
@@ -119,6 +150,7 @@ protected:
 				.arg(QString::fromUtf8(a_Line));
 			throw;
 		}
+		return false;
 	}
 
 
@@ -382,7 +414,6 @@ protected:
 			throw EParseError(__FILE__, __LINE__, "The VERSION sentence has an invalid value.");
 		}
 
-		m_CurrentContact.reset(new Contact);
 		m_State = psContact;
 	}
 
@@ -391,10 +422,12 @@ protected:
 
 
 	/** Parses the given single (unfolded) line in the psContact parser state.
-	May modify the sentence / trash it. */
-	void processSentenceContact(Contact::Sentence & a_Sentence)
+	May modify the sentence / trash it.
+	Returns true if this sentence is a terminator for the contact (no more sentences should be parsed for
+	this contact - the "END:VCARD" sentence). */
+	bool processSentenceContact(Contact::Sentence & a_Sentence)
 	{
-		// If the sentence is "END:VCARD", terminate the current contact:
+		// If the sentence is "END:VCARD", terminate:
 		if (
 			a_Sentence.m_Group.isEmpty() &&
 			(a_Sentence.m_Key == "end") &&
@@ -402,13 +435,8 @@ protected:
 			(a_Sentence.m_Value.toLower() == "vcard")
 		)
 		{
-			if (m_CurrentContact != nullptr)
-			{
-				m_Dest->addContact(m_CurrentContact);
-			}
-			m_CurrentContact.reset();
-			m_State = psIdle;
-			return;
+			m_State = psFinished;
+			return true;
 		}
 
 		// Decode any encoding on the sentence's value:
@@ -423,7 +451,8 @@ protected:
 		decodeValueEncoding(a_Sentence, enc);
 
 		// Add the sentence to the current contact:
-		m_CurrentContact->addSentence(a_Sentence);
+		m_Dest->addSentence(a_Sentence);
+		return false;
 	}
 
 
@@ -499,8 +528,22 @@ protected:
 
 void VCardParser::parse(QIODevice & a_Source, ContactBookPtr a_Dest)
 {
-	VCardParserImpl impl(a_Source, a_Dest);
-	impl.parse();
+	int lineNum = 0;
+	while (!a_Source.atEnd())
+	{
+		auto contact = a_Dest->createNewContact();
+		lineNum = parse(a_Source, contact, lineNum);
+	}
+}
+
+
+
+
+
+int VCardParser::parse(QIODevice & a_Source, ContactPtr a_Dest, int a_LineNumberOffset)
+{
+	VCardParserImpl impl(a_Source, a_Dest, a_LineNumberOffset);
+	return impl.parse();
 }
 
 
