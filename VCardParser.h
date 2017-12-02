@@ -36,9 +36,33 @@ public:
 	Returns the linenumber of the last line read from a_Source for parsing the contact. */
 	static int parse(QIODevice & a_Source, ContactPtr a_Dest, int a_LineNumberOffset = 0);
 
+	/** Breaks into parts a VCard value that follows the regular composition rules:
+	Components are delimited by semicolons, parts within components are delimited by commas.
+	The backslashes are unescaped properly; any escaping errors are ignored (with a qWarning).
+	The assumed format is "<component1part1>,<component1part2>,...;<component2part1>,<component2part2>,..." */
+	static std::vector<std::vector<QByteArray>> breakValueIntoParts(const QByteArray & a_Value);
+
 	/** Breaks into components a VCard value that follows the regular composition rules:
-	Components are delimited by semicolons, multiple values in a component are delimited by a comma. */
-	static std::vector<std::vector<QByteArray>> breakValueIntoComponents(const QByteArray & a_Value);
+	Components are delimited by semicolons, using a backslash as an escape char.
+	The backslashes are unescaped properly; any escaping errors are ignored (with a qWarning).
+	The assumed format is "<component1>;<component2>;..." */
+	static std::vector<QByteArray> breakValueIntoComponents(const QByteArray & a_Value);
+
+	/** Breaks into parts a VCard component that follows the regular composition rules:
+	Components are delimited by commas, using a backslash as an escape char.
+	The backslashes are unescaped properly; any escaping errors are ignored (with a qWarning).
+	The assumed format is "<part1>,<part2>,..." */
+	static std::vector<QByteArray> breakComponentIntoParts(const QByteArray & a_Component);
+
+	/** Removes the backslash escaping for the specified value.
+	\; -> ;
+	\: -> :
+	\, -> ,
+	\\ -> \
+	\n -> <LF>
+	\N -> <LF>
+	\xAB -> <0xAB> */
+	static QByteArray unescapeBackslashes(const QByteArray & a_Part);
 
 	// TODO: Encoding parser and serializer (base64, quoted-printable etc.)
 };
