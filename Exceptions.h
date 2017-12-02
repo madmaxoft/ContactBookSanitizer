@@ -118,4 +118,29 @@ public:
 
 
 
+class ELogicError:
+	public EException
+{
+	using Super = EException;
+
+public:
+
+	/** The description of the failure. */
+	QString m_Message;
+
+
+	explicit ELogicError(
+		const char * a_SrcFileName, int a_SrcLine,
+		const QString & a_Message
+	):
+		Super(a_SrcFileName, a_SrcLine),
+		m_Message(a_Message)
+	{
+	}
+};
+
+
+
+
+
 #endif // EXCEPTIONS_H

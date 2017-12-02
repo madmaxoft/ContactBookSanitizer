@@ -13,4 +13,4 @@ ContactBookSanitizer*.cbsSession
 
 
 # Debugging output files:
-response*.log
+dbg/

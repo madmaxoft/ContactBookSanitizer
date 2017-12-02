@@ -62,10 +62,18 @@ public:
 	{
 		using Super = Property;
 
-	public:
+	protected:
+
 		/** The text contents. */
 		QString m_Value;
 
+
+	public:
+
+		const QString & value() const { return m_Value; }
+		void setValue(const QString & a_Value) { m_Value = a_Value; }
+
+		// Property overrides:
 		virtual std::shared_ptr<Property> createInstance(const QDomNode & a_Node) override;
 	};
 
@@ -183,6 +191,12 @@ public:
 	Uses the m_BaseUrl to provide the parts missing from the (possibly relative) href.
 	Also resolves the possible up-dirs ("../") etc.,returning a canonical URL that can be used in the nodemap. */
 	QUrl urlFromHref(const QString & a_Href) const;
+
+	/** Converts an URL into a href.
+	If the URL is not based on m_BaseUrl, throws an EException descendant.
+	Also resolves the possible up-dirs ("../") etc., returning a canonical Href that can be used for
+	querying the server. */
+	QString hrefFromUrl(const QUrl & a_Url) const;
 
 	/** Returns URLs of known immediate children of the specified node. */
 	QList<QUrl> nodeChildren(const QUrl & a_NodeUrl);

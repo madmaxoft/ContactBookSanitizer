@@ -53,6 +53,24 @@ public:
 
 protected:
 
+	/** Contact specialization for DAV contact books. */
+	class DavContact:
+		public Contact
+	{
+	protected:
+		QString m_Etag;
+		QUrl m_Url;
+
+	public:
+		const QString & etag() const { return m_Etag; }
+		void setEtag(const QString & a_Etag) { m_Etag = a_Etag; }
+		const QUrl & url() const { return m_Url; }
+		void setUrl(const QUrl & a_Url) { m_Url = a_Url; }
+	};
+
+	using DavContactPtr = std::shared_ptr<DavContact>;
+
+
 	/** ContactBook specialization for DAV contact books.
 	Remembers the addressbook's base URL. */
 	class DavContactBook:
@@ -69,6 +87,12 @@ protected:
 			m_BaseUrl(a_BaseUrl)
 		{
 		}
+
+		// ContactBook overrides:
+		virtual ContactPtr createNewContact() override;
+
+		/** Returns the contact represented by the specified URL, or nullptr if no such contact. */
+		DavContactPtr contactFromUrl(const QUrl & a_Url);
 	};
 
 	using DavContactBookPtr = std::shared_ptr<DavContactBook>;
@@ -133,6 +157,12 @@ protected:
 	/** Handles the response for addressbook list query. */
 	void respListAddressbooks(const QNetworkReply & a_Reply);
 
+	/** Handles the response for addressbook Etag report. */
+	void respCheckAddressbookEtags(const QNetworkReply & a_Reply);
+
+	/** Handles the response for addressbook data report. */
+	void respAddressData(const QNetworkReply & a_Reply);
+
 	/** Returns the display name for the specified addressbook.
 	If the server doesn't provide an addressbook displayname, it is synthesized from the URL. */
 	QString displayNameForAdressbook(const QUrl & a_AddressbookUrl);
@@ -143,6 +173,16 @@ protected:
 	/** Marks the device as offline.
 	TODO: Triggers the online-state-change signals. */
 	void setOffline();
+
+	/** Loads the server-side changes for the specified ContactBook (async). */
+	void loadContactBook(DavContactBook * a_ContactBook);
+
+	/** Returns the ContactBook that is represented by the specified URL.
+	Returns nullptr if URL not found. */
+	DavContactBookPtr contactBookFromUrl(const QUrl & a_Url);
+
+	/** Parses the VCard data received from the server into the specified contact. */
+	void parseServerDataToContact(const QString & a_ServerData, DavContactPtr a_Contact);
 
 
 protected slots:
