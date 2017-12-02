@@ -10,6 +10,43 @@
 
 
 
+/** Converts a (displayable) hex character into its numeric value.
+Returns 0 if the input is not a hex character. */
+static int charToHex(char a_HexChar)
+{
+	switch (a_HexChar)
+	{
+		case '0': return 0x00;
+		case '1': return 0x01;
+		case '2': return 0x02;
+		case '3': return 0x03;
+		case '4': return 0x04;
+		case '5': return 0x05;
+		case '6': return 0x06;
+		case '7': return 0x07;
+		case '8': return 0x08;
+		case '9': return 0x09;
+		case 'a': return 0x0a;
+		case 'b': return 0x0b;
+		case 'c': return 0x0c;
+		case 'd': return 0x0d;
+		case 'e': return 0x0e;
+		case 'f': return 0x0f;
+		case 'A': return 0x0a;
+		case 'B': return 0x0b;
+		case 'C': return 0x0c;
+		case 'D': return 0x0d;
+		case 'E': return 0x0e;
+		case 'F': return 0x0f;
+	}
+	qWarning() << __FUNCTION__ << ": Bad hex character: " << a_HexChar;
+	return 0;
+}
+
+
+
+
+
 /** Provides the actual parsing implementation. */
 class VCardParserImpl
 {
@@ -37,7 +74,16 @@ public:
 		while (!m_Source.atEnd())
 		{
 			QByteArray cur = m_Source.readLine();
-			if (QString::fromUtf8(cur).toLower() == "end:vcard\n")
+			// Remove the trailing CR/LF:
+			if (cur.endsWith('\n'))
+			{
+				cur.remove(cur.size() - 1, 1);
+			}
+			if (cur.endsWith('\r'))
+			{
+				cur.remove(cur.size() - 1, 1);
+			}
+			if (QString::fromUtf8(cur).toLower() == "end:vcard")
 			{
 				// This is the last line to be parsed, we can't afford to buffer it in the un-folder
 				if (!acc.isEmpty())
@@ -550,13 +596,25 @@ int VCardParser::parse(QIODevice & a_Source, ContactPtr a_Dest, int a_LineNumber
 
 
 
-std::vector<std::vector<QByteArray>> VCardParser::breakValueIntoComponents(const QByteArray & a_Value)
+std::vector<std::vector<QByteArray>> VCardParser::breakValueIntoParts(const QByteArray & a_Value)
 {
 	std::vector<std::vector<QByteArray>> res;
-	res.push_back({});
-	auto * curComponent = &res.back();
-	curComponent->push_back({});
-	auto * curValue = &curComponent->back();
+	auto components = breakValueIntoComponents(a_Value);
+	for (const auto component: components)
+	{
+		res.push_back(breakComponentIntoParts(component));
+	}
+	return res;
+}
+
+
+
+
+
+std::vector<QByteArray> VCardParser::breakValueIntoComponents(const QByteArray & a_Value)
+{
+	std::vector<QByteArray> res;
+	QByteArray curComponent;
 	auto len = a_Value.length();
 	for (int i = 0; i < len; ++i)
 	{
@@ -566,36 +624,65 @@ std::vector<std::vector<QByteArray>> VCardParser::breakValueIntoComponents(const
 			case ';':
 			{
 				// Start a new component:
-				res.push_back({});
-				curComponent = &res.back();
-				curComponent->push_back({});
-				curValue = &curComponent->back();
-				break;
-			}  // case ';'
-
-			case ',':
-			{
-				// Start a new value:
-				curComponent->push_back({});
-				curValue = &curComponent->back();
+				res.push_back(std::move(curComponent));
+				curComponent = QByteArray();
 				break;
 			}
 
 			case '\\':
 			{
-				// Skip the escape char and push the next char directly into the current value:
-				i = 1 + 1;
-				curValue->append(a_Value.at(i));
+				// Unescape:
+				// vCard uses the following escapes: \:, \;  , \, , \\ , \n , \N , \xAB , \XAB
+				i = i + 1;
+				if (i < len)
+				{
+					switch (a_Value.at(i))
+					{
+						case ':':  curComponent.append(':');  break;
+						case ';':  curComponent.append(';');  break;
+						case ',':  curComponent.append(',');  break;
+						case '\\': curComponent.append('\\'); break;
+						case 'n':
+						case 'N':
+						{
+							curComponent.append('\n');
+							break;
+						}
+						case 'x':
+						case 'X':
+						{
+							if (i + 2 < len)
+							{
+								curComponent.append(static_cast<char>(
+									charToHex(a_Value.at(i + 1)) * 16 +
+									charToHex(a_Value.at(i + 2))
+								));
+								i = i + 2;
+							}
+							else
+							{
+								// Bad escape, ignore?
+								qWarning() << __FUNCTION__ << ": Bad hex escape detected at the end of value: " << a_Value;
+							}
+							break;
+						}
+					}
+					curComponent.append(a_Value.at(i));
+				}
 				break;
-			}
+			}  // case '\\'
 
 			default:
 			{
-				curValue->append(ch);
+				curComponent.append(ch);
 				break;
 			}
 		}  // switch (ch)
 	}  // for i - a_Value[]
+	if (!curComponent.isEmpty())
+	{
+		res.push_back(curComponent);
+	}
 
 	return res;
 }
@@ -603,3 +690,138 @@ std::vector<std::vector<QByteArray>> VCardParser::breakValueIntoComponents(const
 
 
 
+
+std::vector<QByteArray> VCardParser::breakComponentIntoParts(const QByteArray & a_Component)
+{
+	// Identical to breakValueIntoComponents, but splits on a comma, rather than semicolon
+	std::vector<QByteArray> res;
+	QByteArray curPart;
+	auto len = a_Component.length();
+	for (int i = 0; i < len; ++i)
+	{
+		auto ch = a_Component.at(i);
+		switch (ch)
+		{
+			case ',':
+			{
+				// Start a new part:
+				res.push_back(std::move(curPart));
+				curPart = QByteArray();
+				break;
+			}
+
+			case '\\':
+			{
+				// Unescape:
+				// vCard uses the following escapes: \:, \;  , \, , \\ , \n , \N , \xAB , \XAB
+				i = i + 1;
+				if (i < len)
+				{
+					switch (a_Component.at(i))
+					{
+						case ':':  curPart.append(':');  break;
+						case ';':  curPart.append(';');  break;
+						case ',':  curPart.append(',');  break;
+						case '\\': curPart.append('\\'); break;
+						case 'n':
+						case 'N':
+						{
+							curPart.append('\n');
+							break;
+						}
+						case 'x':
+						case 'X':
+						{
+							if (i + 2 < len)
+							{
+								curPart.append(static_cast<char>(
+									charToHex(a_Component.at(i + 1)) * 16 +
+									charToHex(a_Component.at(i + 2))
+								));
+								i = i + 2;
+							}
+							else
+							{
+								// Bad escape, ignore?
+								qWarning() << __FUNCTION__ << ": Bad hex escape detected at the end of component: " << a_Component;
+							}
+							break;
+						}
+					}
+					curPart.append(a_Component.at(i));
+				}
+				break;
+			}  // case '\\'
+
+			default:
+			{
+				curPart.append(ch);
+				break;
+			}
+		}  // switch (ch)
+	}  // for i - a_Value[]
+	if (!curPart.isEmpty())
+	{
+		res.push_back(curPart);
+	}
+
+	return res;
+}
+
+
+
+
+
+QByteArray VCardParser::unescapeBackslashes(const QByteArray & a_Part)
+{
+	QByteArray res;
+	auto len = a_Part.length();
+	for (int i = 0; i < len; ++i)
+	{
+		auto ch = a_Part.at(i);
+		if (ch != '\\')
+		{
+			res.push_back(ch);
+			continue;
+		}
+		i = i + 1;
+		if (i >= len)
+		{
+			qWarning() << __FUNCTION__ << ": Invalid escape at the end of value: " << a_Part;
+			return res;
+		}
+		// vCard uses the following escapes: \:, \;  , \, , \\ , \n , \N , \xAB , \XAB
+		switch (a_Part.at(i))
+		{
+			case ':':  res.append(':');  break;
+			case ';':  res.append(';');  break;
+			case ',':  res.append(',');  break;
+			case '\\': res.append('\\'); break;
+			case 'n':
+			case 'N':
+			{
+				res.append('\n');
+				break;
+			}
+			case 'x':
+			case 'X':
+			{
+				if (i + 2 < len)
+				{
+					res.append(static_cast<char>(
+						charToHex(a_Part.at(i + 1)) * 16 +
+						charToHex(a_Part.at(i + 2))
+					));
+					i = i + 2;
+				}
+				else
+				{
+					// Bad escape, ignore
+					qWarning() << __FUNCTION__ << ": Bad hex escape detected at the end of value: " << a_Part;
+				}
+				break;
+			}
+		}
+	}  // for i - a_Value[]
+	return res;
+}

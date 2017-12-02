@@ -16,7 +16,8 @@ public:
 	TestVCardParser();
 
 private Q_SLOTS:
-	void testBasic();
+	void testBasicCRLF();
+	void testBasicLF();
 	void testQuotes();
 	void testBase64();
 };
@@ -33,7 +34,7 @@ TestVCardParser::TestVCardParser()
 
 
 
-void TestVCardParser::testBasic()
+void TestVCardParser::testBasicCRLF()
 {
 	QByteArray vcard(
 		"begin:vcard\r\n"
@@ -42,6 +43,55 @@ void TestVCardParser::testBasic()
 		"TEL;tYPe=Work:112\r\n"
 		"email;work:always.busy@emergency.com\r\n"
 		"end:vcard"
+	);
+	QBuffer buf(&vcard);
+	buf.open(QIODevice::ReadOnly | QIODevice::Text);
+	ContactBookPtr contacts(new ContactBook(""));
+	try
+	{
+		VCardParser::parse(buf, contacts);
+	}
+	catch (const EException & exc)
+	{
+		QFAIL("Failed to parse basic VCard");
+	}
+	QVERIFY(contacts != nullptr);
+	QVERIFY(contacts->contacts().size() == 1);
+	const auto & c = contacts->contacts()[0];
+	const auto & sentences = c->sentences();
+	QVERIFY(sentences.size() == 3);
+	QVERIFY(sentences[0].m_Group.isEmpty());
+	QVERIFY(sentences[0].m_Key == "fn");
+	QVERIFY(sentences[0].m_Params.empty());
+	QVERIFY(sentences[0].m_Value == "Example contact");
+	QVERIFY(sentences[1].m_Group.isEmpty());
+	QVERIFY(sentences[1].m_Key == "tel");
+	QVERIFY(sentences[1].m_Params.size() == 1);
+	QVERIFY(sentences[1].m_Params[0].m_Name == "type");
+	QVERIFY(sentences[1].m_Params[0].m_Values.size() == 1);
+	QVERIFY(sentences[1].m_Params[0].m_Values[0] == "Work");
+	QVERIFY(sentences[1].m_Value == "112");
+	QVERIFY(sentences[2].m_Group.isEmpty());
+	QVERIFY(sentences[2].m_Key == "email");
+	QVERIFY(sentences[2].m_Params.size() == 1);
+	QVERIFY(sentences[2].m_Params[0].m_Name == "work");
+	QVERIFY(sentences[2].m_Params[0].m_Values.empty());
+	QVERIFY(sentences[2].m_Value == "always.busy@emergency.com");
+}
+
+
+
+
+
+void TestVCardParser::testBasicLF()
+{
+	QByteArray vcard(
+		"begin:vcard\n"
+		"version:4\n"
+		"fn:Example contact\n"
+		"TEL;tYPe=Work:112\n"
+		"email;work:always.busy@emergency.com\n"
+		"end:vcard\n"
 	);
 	QBuffer buf(&vcard);
 	buf.open(QIODevice::ReadOnly | QIODevice::Text);
