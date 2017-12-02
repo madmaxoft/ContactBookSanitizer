@@ -10,7 +10,7 @@
 
 
 
-static void logReply(QNetworkReply * a_Reply, const QByteArray & a_ResponseBody)
+static void logReply(const QNetworkReply * a_Reply, const QByteArray & a_ResponseBody)
 {
 	// Log the reply to Qt log:
 	const auto & req = a_Reply->request();
@@ -38,7 +38,7 @@ static void logReply(QNetworkReply * a_Reply, const QByteArray & a_ResponseBody)
 	{
 		path.remove(0, lastSlash + 1);
 	}
-	QFile f(QString("response_%1.log").arg(counter++));
+	QFile f(QString("dbg/response_%1.log").arg(counter++));
 	f.open(QFile::WriteOnly);
 	f.write(QString("Request: %1 %2\n").arg(method, req.url().toString()).toUtf8());
 	f.write(QString("Error: %1\n").arg(a_Reply->error()).toUtf8());
@@ -59,10 +59,39 @@ static void logReply(QNetworkReply * a_Reply, const QByteArray & a_ResponseBody)
 
 
 
+static void logRequest(const QNetworkRequest & a_Request, const QByteArray & a_RequestBody)
+{
+	// Log the request to a file:
+	static int counter = 0;
+	auto method = a_Request.attribute(QNetworkRequest::CustomVerbAttribute).toString();
+	QFile f(QString("dbg/request_%1.log").arg(counter++));
+	f.open(QFile::WriteOnly);
+	f.write(QString("Request: %1 %2\n").arg(method, a_Request.url().toString()).toUtf8());
+	f.write(QString("Headers (%1):\n").arg(a_Request.rawHeaderList().count()).toUtf8());
+	for (const auto & hdr: a_Request.rawHeaderList())
+	{
+		f.write("  ");
+		f.write(hdr);
+		f.write(": ");
+		f.write(a_Request.rawHeader(hdr));
+		f.write("\n");
+	}
+	f.write("\n");
+	f.write(a_RequestBody);
+}
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // DavPropertyTree::TextProperty:
 
-static DavPropertyHandlers::Registrator g_RegDisplayName(NS_DAV, "displayname", std::make_shared<DavPropertyTree::TextProperty>());
+static DavPropertyHandlers::Registrator g_RegTextProperty[] =
+{
+	{NS_DAV,     "displayname",  std::make_shared<DavPropertyTree::TextProperty>()},
+	{NS_DAV,     "getetag",      std::make_shared<DavPropertyTree::TextProperty>()},
+	{NS_CARDDAV, "address-data", std::make_shared<DavPropertyTree::TextProperty>()},
+};
 
 std::shared_ptr<DavPropertyTree::Property> DavPropertyTree::TextProperty::createInstance(const QDomNode & a_Node)
 {
@@ -288,6 +317,20 @@ DavPropertyTree::Node & DavPropertyTree::node(const QUrl & a_Url)
 QUrl DavPropertyTree::urlFromHref(const QString & a_Href) const
 {
 	return m_BaseUrl.resolved(a_Href);
+}
+
+
+
+
+
+QString DavPropertyTree::hrefFromUrl(const QUrl & a_Url) const
+{
+	if (!m_BaseUrl.isParentOf(a_Url))
+	{
+		throw ELogicError(__FILE__, __LINE__, "Url is not a child of BaseUrl");
+	}
+	auto adj = a_Url.adjusted(QUrl::RemoveAuthority | QUrl::RemoveScheme | QUrl::NormalizePathSegments);
+	return adj.toString();
 }
 
 
@@ -535,11 +578,13 @@ void DavPropertyTree::internalRequestFinished(QNetworkReply * a_Reply)
 {
 	// Free up the QBuffer that was created for the request's data:
 	auto bufferIndex = a_Reply->request().attribute(QNetworkRequest::UserMax).toUInt();
+	auto buffer = m_Buffers[bufferIndex];
 	m_Buffers.remove(bufferIndex);
 
 	auto baResp = a_Reply->readAll();
 
 	// DEBUG:
+	logRequest(a_Reply->request(), buffer->buffer());
 	logReply(a_Reply, baResp);
 
 	if (a_Reply->error() == QNetworkReply::NoError)

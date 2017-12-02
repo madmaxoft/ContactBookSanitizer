@@ -37,18 +37,24 @@ void ContactBookModel::setContactBook(ContactBookPtr a_ContactBook)
 	m_ContactBook = a_ContactBook;
 	if (a_ContactBook != nullptr)
 	{
+		qDebug() << "There are " << a_ContactBook->contacts().size() << " contacts to process.";
 		for (const auto & contact: a_ContactBook->contacts())
 		{
 			auto displayContact = DisplayContact::fromContact(*contact);
 			m_DisplayContacts.push_back(displayContact);
+		}
+		qDebug() << "ContactBookModel: Parsing into display contacts took " << timer.elapsed() << " msec.";
+		timer.restart();
+		for (const auto & displayContact: m_DisplayContacts)
+		{
 			auto item = new QStandardItem(displayContact->displayName());
 			item->setData(QVariant(reinterpret_cast<qulonglong>(displayContact.get())));
 			appendRow(item);
 			updateContactItem(item);
 		}
+		qDebug()
+			<< "ContactBookModel: Adding new data took " << timer.elapsed() << " msec.";
 	}
-
-	qDebug() << "ContactBookModel: Adding new data took " << timer.elapsed() << " msec.";
 }
 
 

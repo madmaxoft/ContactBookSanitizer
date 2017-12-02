@@ -1,28 +1,76 @@
 #include "DeviceCardDav.h"
+#include <assert.h>
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QXmlStreamWriter>
+#include <QBuffer>
+#include <QFile>
+#include "VCardParser.h"
+#include "Exceptions.h"
 
 
 
 
 
-static const int PERIODIC_CHECK_SECONDS = 30;
+static const int PERIODIC_CHECK_SECONDS = 5 * 60;
 
 
 
 
+/** The various kinds of requests that can be sent / received answers for. */
 enum
 {
 	reqDetectAddressBookSupport = 1,
 	reqCurrentUserPrincipal,
 	reqAddressbookRoot,
 	reqListAddressbooks,
+	reqCheckAddressbookEtags,
+	reqAddressbookData,
 };
 
 
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// DeviceCardDav:DavContactBook:
+
+ContactPtr DeviceCardDav::DavContactBook::createNewContact()
+{
+	DavContactPtr res(new DavContact);
+	addContact(res);
+	return res;
+}
+
+
+
+
+
+DeviceCardDav::DavContactPtr DeviceCardDav::DavContactBook::contactFromUrl(const QUrl & a_Url)
+{
+	for (const auto & c: m_Contacts)
+	{
+		const auto dc = std::dynamic_pointer_cast<DavContact>(c);
+		if (dc == nullptr)
+		{
+			qWarning() << __FUNCTION__ << "DAV ContactBook contains a non-DAV contact!";
+			assert(!"DAV ContactBook contains a non-DAV contact!");
+			continue;
+		}
+		if (dc->url() == a_Url)
+		{
+			return dc;
+		}
+	}
+	return nullptr;
+}
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// DeviceCardDav:
 
 DeviceCardDav::DeviceCardDav():
 	m_IsOnline(false)
@@ -248,7 +296,7 @@ void DeviceCardDav::respAddressbookRoot(const QNetworkReply & a_Reply)
 		w.writeEndElement();
 	w.writeEndElement();
 	w.writeEndDocument();
-	qDebug() << __FUNCTION__ << ": Requesting addressbook list: " << baReq;
+	qDebug() << __FUNCTION__ << ": Requesting addressbook list";
 	m_DavPropertyTree->sendRequest(m_AddressbookHomeUrl, "PROPFIND", 1, baReq, reqListAddressbooks);
 }
 
@@ -321,6 +369,7 @@ void DeviceCardDav::respListAddressbooks(const QNetworkReply & a_Reply)
 			auto cb = std::make_shared<DavContactBook>(abu, displayName);
 			m_ContactBooks.push_back(cb);
 			emit addContactBook(this, cb);
+			loadContactBook(cb.get());
 		}
 	}
 
@@ -332,12 +381,136 @@ void DeviceCardDav::respListAddressbooks(const QNetworkReply & a_Reply)
 
 
 
+void DeviceCardDav::respCheckAddressbookEtags(const QNetworkReply & a_Reply)
+{
+	auto cb = contactBookFromUrl(a_Reply.url());
+	if (cb == nullptr)
+	{
+		qWarning() << __FUNCTION__
+			<< ": Received a response for unknown ContactBook URL: " << a_Reply.url().toString()
+			<< ", ignoring.";
+		assert(!"Unknown ContactBook URL");
+		return;
+	}
+
+	// The server should have reported fresh Etags for each contact in the addressbook
+	// Sync the list of contacts and request any that have changed:
+	QByteArray baReq;
+	QXmlStreamWriter w(&baReq);
+	int toSync = 0;
+	w.writeStartDocument();
+	w.writeNamespace(NS_DAV, "d");
+	w.writeNamespace(NS_CARDDAV, "c");
+	w.writeStartElement("c:addressbook-query");
+		w.writeStartElement("d:prop");
+			w.writeEmptyElement("d:getetag");
+			w.writeEmptyElement("c:address-data");
+		w.writeEndElement();
+
+		const auto & children = m_DavPropertyTree->nodeChildren(a_Reply.url());
+		auto size = children.size();
+		for (int i = 0; i < size; ++i)
+		{
+			const auto & chUrl = children.at(i);
+			auto contact = cb->contactFromUrl(chUrl);
+			if (contact == nullptr)
+			{
+				w.writeStartElement("d:href");
+					w.writeCharacters(m_DavPropertyTree->hrefFromUrl(chUrl));
+				w.writeEndElement();
+				toSync += 1;
+				continue;
+			}
+			const auto & childNode = m_DavPropertyTree->node(chUrl);
+			auto serverEtag = childNode.findProp<DavPropertyTree::TextProperty>(NS_DAV, "getetag");
+			if (serverEtag == nullptr)
+			{
+				qDebug() << __FUNCTION__
+					<< ": Server didn't report an etag for contact at " << chUrl.toString()
+					<< ", skipping contact.";
+				continue;
+			}
+			if (contact->etag() != serverEtag->value())
+			{
+				w.writeStartElement("d:href");
+					w.writeCharacters(m_DavPropertyTree->hrefFromUrl(chUrl));
+				w.writeEndElement();
+				toSync += 1;
+				continue;
+			}
+		}
+	w.writeEndElement();
+	w.writeEndDocument();
+	qDebug() << __FUNCTION__ << ": # contacts to sync: " << toSync;
+	if (toSync > 0)
+	{
+		m_DavPropertyTree->sendRequest(a_Reply.url(), "REPORT", 1, baReq, reqAddressbookData);
+	}
+}
+
+
+
+
+
+void DeviceCardDav::respAddressData(const QNetworkReply & a_Reply)
+{
+	// Get the ContactBook on which to perform the sync:
+	auto cb = contactBookFromUrl(a_Reply.url());
+	if (cb == nullptr)
+	{
+		qWarning() << __FUNCTION__
+			<< ": Received a response for unknown ContactBook URL: " << a_Reply.url().toString()
+			<< ", ignoring.";
+		assert(!"Unknown ContactBook URL");
+		return;
+	}
+
+	// Sync the contacts:
+	const auto & children = m_DavPropertyTree->nodeChildren(a_Reply.url());
+	auto size = children.size();
+	for (int i = 0; i < size; ++i)
+	{
+		const auto & chUrl = children.at(i);
+		auto contact = cb->contactFromUrl(chUrl);
+		if (contact == nullptr)
+		{
+			qDebug() << __FUNCTION__ <<": Creating a new contact for URL " << chUrl.toString();
+			contact = std::static_pointer_cast<DavContact>(cb->createNewContact());
+			contact->setUrl(chUrl);
+		}
+		const auto & childNode = m_DavPropertyTree->node(chUrl);
+		auto serverEtag = childNode.findProp<DavPropertyTree::TextProperty>(NS_DAV, "getetag");
+		if (serverEtag == nullptr)
+		{
+			qDebug() << __FUNCTION__
+				<< ": Server didn't report an etag for contact at " << chUrl.toString()
+				<< ", skipping contact sync.";
+			continue;
+		}
+		contact->setEtag(serverEtag->value());
+		auto serverData = childNode.findProp<DavPropertyTree::TextProperty>(NS_CARDDAV, "address-data");
+		if (serverData == nullptr)
+		{
+			qDebug() << __FUNCTION__
+				<< ": Server didn't report any address data for contact at " << chUrl.toString()
+				<< ", skipping contact sync.";
+			continue;
+		}
+		parseServerDataToContact(serverData->value(), contact);
+		qDebug() << __FUNCTION__ << ": Contact parsed, URL " << chUrl.toString();
+	}
+}
+
+
+
+
+
 QString DeviceCardDav::displayNameForAdressbook(const QUrl & a_AddressbookUrl)
 {
 	auto displayNameProp = m_DavPropertyTree->node(a_AddressbookUrl).findProp<DavPropertyTree::TextProperty>(NS_DAV, "displayname");
 	if (displayNameProp != nullptr)
 	{
-		return displayNameProp->m_Value;
+		return displayNameProp->value();
 	}
 	auto path = a_AddressbookUrl.path();
 	if (path.endsWith('/'))
@@ -378,6 +551,79 @@ void DeviceCardDav::setOffline()
 
 
 
+void DeviceCardDav::loadContactBook(DeviceCardDav::DavContactBook * a_ContactBook)
+{
+	qDebug() << __FUNCTION__ << ": Loading ContactBook " << a_ContactBook->m_BaseUrl.toString();
+	QByteArray baReq;
+	QXmlStreamWriter w(&baReq);
+	w.writeStartDocument();
+	w.writeNamespace(NS_DAV, "d");
+	w.writeNamespace(NS_CARDDAV, "c");
+	w.writeStartElement("c:addressbook-query");
+		w.writeStartElement("d:prop");
+			w.writeEmptyElement("d:getetag");
+		w.writeEndElement();
+	w.writeEndElement();
+	w.writeEndDocument();
+	m_DavPropertyTree->sendRequest(a_ContactBook->m_BaseUrl, "REPORT", 1, baReq, reqCheckAddressbookEtags);
+}
+
+
+
+
+
+DeviceCardDav::DavContactBookPtr DeviceCardDav::contactBookFromUrl(const QUrl & a_Url)
+{
+	for (auto & cb: m_ContactBooks)
+	{
+		if (cb->m_BaseUrl == a_Url)
+		{
+			return cb;
+		}
+	}
+	return nullptr;
+}
+
+
+
+
+
+void DeviceCardDav::parseServerDataToContact(const QString & a_ServerData, DavContactPtr a_Contact)
+{
+	// Parse the VCard data into a new contact:
+	try
+	{
+		auto baServerData = a_ServerData.toUtf8();
+
+		// DEBUG: Save data to file:
+		static int counter = 0;
+		auto fnam = QString("dbg/contact_%1.vcf").arg(counter);
+		QFile f(fnam);
+		if (f.open(QIODevice::WriteOnly))
+		{
+			f.write(baServerData);
+			f.close();
+		}
+		counter += 1;
+
+		QBuffer bufServerData(&baServerData);
+		bufServerData.open(QIODevice::ReadOnly);
+		VCardParser::parse(bufServerData, std::dynamic_pointer_cast<Contact>(a_Contact));
+	}
+	catch (const EException & exc)
+	{
+		qDebug() << __FUNCTION__
+			<< ": Exception while parsing contact at " << a_Contact->url().toString()
+			<< ": " << exc.what()
+			<< "\nServer data: " << a_ServerData;
+		return;
+	}
+}
+
+
+
+
+
 void DeviceCardDav::replyFinished(
 	const QNetworkReply * a_Reply,
 	const QByteArray * a_ResponseBody,
@@ -392,6 +638,8 @@ void DeviceCardDav::replyFinished(
 		case reqCurrentUserPrincipal:     return respCurrentUserPrincipal(*a_Reply);
 		case reqAddressbookRoot:          return respAddressbookRoot(*a_Reply);
 		case reqListAddressbooks:         return respListAddressbooks(*a_Reply);
+		case reqCheckAddressbookEtags:    return respCheckAddressbookEtags(*a_Reply);
+		case reqAddressbookData:          return respAddressData(*a_Reply);
 	}
 	qWarning() << __FUNCTION__ << ": Unhandled request type: " << a_UserData;
 }
@@ -417,6 +665,7 @@ void DeviceCardDav::periodicCheck()
 	qDebug() << __FUNCTION__ << ": Initiating a periodic check";
 	m_DavPropertyTree->sendRequest(m_ServerUrl, "OPTIONS", 0, QByteArray(), reqDetectAddressBookSupport);
 }
+
 
 
 
