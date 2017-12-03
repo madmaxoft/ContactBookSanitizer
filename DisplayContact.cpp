@@ -1,6 +1,4 @@
 #include "DisplayContact.h"
-#include <QElapsedTimer>
-#include <QDebug>
 #include "VCardParser.h"
 
 
@@ -18,9 +16,6 @@ DisplayContact::DisplayContact(const Contact & a_Contact):
 
 std::shared_ptr<DisplayContact> DisplayContact::fromContact(const Contact & a_Contact)
 {
-	QElapsedTimer timer;
-	timer.start();
-
 	std::shared_ptr<DisplayContact> res(new DisplayContact(a_Contact));
 
 	for (const auto & s: a_Contact.sentences())
@@ -42,9 +37,6 @@ std::shared_ptr<DisplayContact> DisplayContact::fromContact(const Contact & a_Co
 			res->addEmailItem(s);
 		}
 	}
-
-	qDebug() << __FUNCTION__ << ": took " << timer.elapsed() << " msec.";
-
 	return res;
 }
 
