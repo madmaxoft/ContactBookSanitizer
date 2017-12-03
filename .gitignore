@@ -3,6 +3,16 @@
 *.pro.user.*
 
 
+# MSVC Qt plugin temporary files:
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.sln
+build/
+debug/
+release/
+
+
 # Sample contact files:
 *.vcf
 

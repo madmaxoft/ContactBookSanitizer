@@ -120,6 +120,7 @@ public:
 
 	// QWizardPage overrides:
 	virtual bool isComplete() const override;
+	virtual int nextId() const override { return -1; }
 
 protected:
 
