@@ -59,6 +59,12 @@ public:
 	/** Returns the display name for the contact. */
 	const QString & displayName() const { return m_DisplayName; }
 
+	/** Returns true if there's a picture assigned to this contact. */
+	bool hasPicture() const { return !m_Picture.isNull(); }
+
+	/** Returns the picture assigned to this contact, or an empty pixmap. */
+	const QPixmap & picture() const { return m_Picture; }
+
 	const std::vector<ItemPtr> & items() const { return m_Items; }
 
 
@@ -70,7 +76,7 @@ protected:
 	/** The main name to be displayed for the contact. */
 	QString m_DisplayName;
 
-	/** The picture to be shown for the contact (check isNull). */
+	/** The picture to be shown for the contact (check with hasPicture()). */
 	QPixmap m_Picture;
 
 	/** All the items parsed from the contact. */

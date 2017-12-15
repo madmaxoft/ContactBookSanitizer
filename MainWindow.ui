@@ -43,7 +43,7 @@
       </property>
       <widget class="QTreeView" name="tvSession">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
          <horstretch>1</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -52,15 +52,12 @@
         <bool>true</bool>
        </property>
       </widget>
-      <widget class="QTreeView" name="tvContactBook">
+      <widget class="HorizontalContactView" name="tvContactBook" native="true">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-         <horstretch>4</horstretch>
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+         <horstretch>5</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
-       </property>
-       <property name="verticalScrollBarPolicy">
-        <enum>Qt::ScrollBarAlwaysOn</enum>
        </property>
       </widget>
      </widget>
@@ -73,7 +70,7 @@
      <x>0</x>
      <y>0</y>
      <width>1173</width>
-     <height>18</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -121,6 +118,14 @@
   </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>HorizontalContactView</class>
+   <extends>QWidget</extends>
+   <header>HorizontalContactView.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>

@@ -30,7 +30,6 @@ SOURCES += \
 	Session.cpp \
 	ContactBook.cpp \
 	SessionModel.cpp \
-	ContactBookModel.cpp \
 	Device.cpp \
 	ExampleDevice.cpp \
 	DeviceVcfFile.cpp \
@@ -40,14 +39,14 @@ SOURCES += \
 	DlgAddDevice.cpp \
 	DeviceCardDav.cpp \
 	DavPropertyTree.cpp \
-	DavPropertyHandlers.cpp
+	DavPropertyHandlers.cpp \
+	HorizontalContactView.cpp
 
 HEADERS  += \
 	MainWindow.h \
 	Session.h \
 	ContactBook.h \
 	SessionModel.h \
-	ContactBookModel.h \
 	Device.h \
 	ExampleDevice.h \
 	DeviceVcfFile.h \
@@ -58,7 +57,8 @@ HEADERS  += \
 	DlgAddDevice.h \
 	DeviceCardDav.h \
 	DavPropertyTree.h \
-	DavPropertyHandlers.h
+	DavPropertyHandlers.h \
+	HorizontalContactView.h
 
 FORMS    += \
 	MainWindow.ui \

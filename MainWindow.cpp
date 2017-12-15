@@ -3,7 +3,6 @@
 #include "ui_MainWindow.h"
 #include "Session.h"
 #include "SessionModel.h"
-#include "ContactBookModel.h"
 #include "Device.h"
 #include "DlgAddDevice.h"
 
@@ -56,10 +55,6 @@ MainWindow::MainWindow(std::unique_ptr<Session> && a_Session):
 		}
 		m_UI->tvSession->expand(mi);
 	}
-
-	// Set up the ContactBook display:
-	m_ContactBookModel.reset(new ContactBookModel(nullptr));
-	m_UI->tvContactBook->setModel(m_ContactBookModel.get());
 }
 
 
@@ -90,8 +85,7 @@ void MainWindow::connectSignals()
 
 void MainWindow::sessionItemActivated(const QModelIndex & a_Index)
 {
-	m_ContactBookModel->setContactBook(m_SessionModel->getContactBook(a_Index));
-	m_UI->tvContactBook->expandAll();
+	m_UI->tvContactBook->setContactBook(m_SessionModel->getContactBook(a_Index));
 }
 
 

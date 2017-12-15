@@ -15,7 +15,6 @@
 // fwd:
 class Session;
 class SessionModel;
-class ContactBookModel;
 class Device;
 namespace Ui
 {
@@ -54,9 +53,6 @@ private:
 
 	/** The model for displaying the session data in tvSession. */
 	std::unique_ptr<SessionModel> m_SessionModel;
-
-	/** The model for displaying contacts in the selected ContactBook. */
-	std::unique_ptr<ContactBookModel> m_ContactBookModel;
 
 
 	/** Connects the UI signals and slots. */
