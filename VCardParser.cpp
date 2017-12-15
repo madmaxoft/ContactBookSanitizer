@@ -600,6 +600,7 @@ std::vector<std::vector<QByteArray>> VCardParser::breakValueIntoParts(const QByt
 {
 	std::vector<std::vector<QByteArray>> res;
 	auto components = breakValueIntoComponents(a_Value);
+	res.reserve(components.size());
 	for (const auto component: components)
 	{
 		res.push_back(breakComponentIntoParts(component));
