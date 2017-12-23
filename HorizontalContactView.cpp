@@ -416,6 +416,8 @@ void HorizontalContactView::updateInternalGeometry()
 
 void HorizontalContactView::headerSectionResized(int a_ColumnIndex, int a_OldSize, int a_NewSize)
 {
+	Q_UNUSED(a_OldSize);
+
 	auto oldColPos = (a_ColumnIndex / 2) * (m_LabelWidth + m_ValueWidth);
 	if ((a_ColumnIndex % 2) == 1)
 	{
